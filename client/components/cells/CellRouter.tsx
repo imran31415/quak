@@ -1,0 +1,26 @@
+import type { ICellRendererParams } from 'ag-grid-community';
+import { TextCell } from './TextCell';
+import { NumberCell } from './NumberCell';
+import { CheckboxCell } from './CheckboxCell';
+import { DropdownCell } from './DropdownCell';
+import { DateCell } from './DateCell';
+import { MarkdownCell } from './MarkdownCell';
+import type { CellType } from '@shared/constants';
+
+const renderers: Record<CellType, React.ComponentType<ICellRendererParams>> = {
+  text: TextCell,
+  number: NumberCell,
+  checkbox: CheckboxCell,
+  dropdown: DropdownCell,
+  date: DateCell,
+  formula: TextCell,
+  markdown: MarkdownCell,
+};
+
+export function CellRouter(props: ICellRendererParams & { cellType?: CellType }) {
+  const cellType = props.cellType || 'text';
+  const Renderer = renderers[cellType] || TextCell;
+  return <Renderer {...props} />;
+}
+
+export { renderers };

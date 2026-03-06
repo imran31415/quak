@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.duckdb
+*.duckdb.wal
+*.duckdb-shm
+server/storage/data/
+test-results/
+playwright-report/
+.vite/
+*.log

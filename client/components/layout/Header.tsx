@@ -3,6 +3,7 @@ import { useUIStore } from '../../store/uiStore';
 export function Header() {
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const toggleQueryPanel = useUIStore((s) => s.toggleQueryPanel);
+  const toggleChatPanel = useUIStore((s) => s.toggleChatPanel);
 
   return (
     <header className="h-12 bg-white border-b border-gray-200 flex items-center px-4 shrink-0" data-testid="header">
@@ -17,7 +18,7 @@ export function Header() {
         </svg>
       </button>
       <h1 className="text-lg font-semibold text-gray-800">Quak</h1>
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-2">
         <button
           onClick={toggleQueryPanel}
           className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -25,6 +26,14 @@ export function Header() {
           data-testid="toggle-query"
         >
           SQL
+        </button>
+        <button
+          onClick={toggleChatPanel}
+          className="px-3 py-1.5 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
+          aria-label="Toggle AI chat panel"
+          data-testid="toggle-chat"
+        >
+          AI
         </button>
       </div>
     </header>

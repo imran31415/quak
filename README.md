@@ -6,6 +6,7 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 
 ## Features
 
+- **Multiple views** — Grid, Kanban, Calendar, and Gallery views over the same data
 - **7 cell types** — text, numbers, checkboxes, dropdowns, date pickers, formulas, and markdown all in one sheet
 - **In-browser SQL** — query your spreadsheet data with DuckDB-WASM, with syntax highlighting and query templates
 - **Charts** — visualize query results as bar, line, or pie charts
@@ -18,11 +19,23 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 - **Responsive** — mobile-friendly layout with bottom navigation and slide-over sidebar
 
 <details>
-<summary>Desktop & Mobile Screenshots</summary>
+<summary>View Screenshots</summary>
 
-### Desktop
+### Grid View
 
-![Desktop](screenshots/desktop.png)
+![Grid View](screenshots/grid-view.png)
+
+### Kanban View
+
+![Kanban View](screenshots/kanban-view.png)
+
+### Calendar View
+
+![Calendar View](screenshots/calendar-view.png)
+
+### Gallery View
+
+![Gallery View](screenshots/gallery-view.png)
 
 ### Mobile
 
@@ -70,6 +83,7 @@ npm run docs:dev
 
 Then open http://localhost:5173 to browse the docs, including:
 
+- [Multiple Views](docs/features/views.md) — Grid, Kanban, Calendar, and Gallery
 - [Cell Types](docs/features/cell-types.md) — all 7 types with usage details
 - [SQL Queries](docs/features/sql-queries.md) — query panel, templates, and history
 - [Charts](docs/features/charts.md) — bar, line, and pie visualization
@@ -90,6 +104,7 @@ quak/
 │   └── components/  # UI components
 │       ├── layout/  # AppShell, Header, Sidebar, MobileNav
 │       ├── grid/    # SpreadsheetGrid, GridToolbar, StatusBar
+│       ├── views/   # ViewContainer, Kanban, Calendar, Gallery
 │       ├── cells/   # CellRouter + per-type renderers
 │       ├── query/   # SQL panel, charts, history, templates
 │       └── import/  # File import dialog
@@ -115,7 +130,7 @@ quak/
 ```bash
 make test           # All tests (unit + E2E)
 make test-unit      # Unit tests only (Vitest, 9 files)
-make test-e2e       # E2E tests only (Playwright, 12 files)
+make test-e2e       # E2E tests only (Playwright, 13 files)
 make test-file F=query  # Single E2E test file
 make check          # Quick: typecheck + unit
 make verify         # Full: typecheck + unit + E2E

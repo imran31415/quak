@@ -29,6 +29,7 @@ export default defineConfig({
         text: 'Features',
         items: [
           { text: 'Overview', link: '/features/' },
+          { text: 'Multiple Views', link: '/features/views' },
           { text: 'Cell Types', link: '/features/cell-types' },
           { text: 'SQL Query Panel', link: '/features/sql-queries' },
           { text: 'Charts & Visualization', link: '/features/charts' },

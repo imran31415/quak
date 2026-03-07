@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { DuckDBProvider } from './db/DuckDBProvider';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AppShell } from './components/layout/AppShell';
-import { SpreadsheetGrid } from './components/grid/SpreadsheetGrid';
+import { ViewContainer } from './components/views/ViewContainer';
 import { QueryPanel } from './components/query/QueryPanel';
 import { ImportDialog } from './components/import/ImportDialog';
 import { ToastContainer } from './components/layout/Toast';
@@ -35,7 +35,7 @@ export default function App() {
           <AppShell>
             <div className="flex flex-col h-full">
               <div className="flex-1 min-h-0">
-                <SpreadsheetGrid />
+                <ViewContainer />
               </div>
               <QueryPanel />
             </div>

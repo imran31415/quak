@@ -1,12 +1,18 @@
 import { create } from 'zustand';
 import type { SheetMeta, ColumnConfig } from '@shared/types';
 import { api } from '../api/sheets';
+import { useToastStore } from './toastStore';
+
+function toast(message: string, type: 'error' | 'success' | 'info' = 'error') {
+  useToastStore.getState().addToast(message, type);
+}
 
 interface SheetState {
   sheets: SheetMeta[];
   activeSheetId: string | null;
   activeSheetMeta: SheetMeta | null;
   rows: Record<string, unknown>[];
+  selectedRowIds: Set<number>;
   loading: boolean;
   error: string | null;
 
@@ -15,7 +21,16 @@ interface SheetState {
   createSheet: (name: string, columns: ColumnConfig[]) => Promise<string>;
   deleteSheet: (id: string) => Promise<void>;
   updateCell: (rowIndex: number, column: string, value: unknown) => void;
-  addRow: () => void;
+  addRow: () => Promise<number | undefined>;
+  deleteRow: (rowIndex: number) => void;
+  deleteRows: (rowIndices: number[]) => void;
+  addColumn: (column: { name: string; cellType: string; width?: number; options?: string[] }) => Promise<void>;
+  deleteColumn: (columnId: string) => Promise<void>;
+  renameColumn: (columnId: string, newName: string) => Promise<void>;
+  updateColumnWidth: (columnId: string, width: number) => void;
+  toggleRowSelection: (rowId: number) => void;
+  selectAllRows: () => void;
+  clearSelection: () => void;
 }
 
 export const useSheetStore = create<SheetState>((set, get) => ({
@@ -23,6 +38,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   activeSheetId: null,
   activeSheetMeta: null,
   rows: [],
+  selectedRowIds: new Set(),
   loading: false,
   error: null,
 
@@ -38,7 +54,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
   loadSheet: async (id: string) => {
     try {
-      set({ loading: true, error: null });
+      set({ loading: true, error: null, selectedRowIds: new Set() });
       const data = await api.getSheet(id);
       const meta: SheetMeta = {
         id: data.id,
@@ -47,7 +63,6 @@ export const useSheetStore = create<SheetState>((set, get) => ({
         createdAt: data.createdAt ?? (data as unknown as Record<string, unknown>).created_at as string,
         updatedAt: data.updatedAt ?? (data as unknown as Record<string, unknown>).updated_at as string,
       };
-      // Ensure each row has a stable __idx for AG Grid row IDs
       const rows = (data.rows || []).map((r: Record<string, unknown>, i: number) => ({
         ...r,
         __idx: r.rowid ?? i,
@@ -58,6 +73,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
         rows,
         loading: false,
       });
+      localStorage.setItem('quak-active-sheet', id);
     } catch (err) {
       set({ error: (err as Error).message, loading: false });
     }
@@ -98,14 +114,16 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     if (activeSheetId) {
       const rowId = rows[rowIndex].rowid as number | undefined;
       if (rowId !== undefined) {
-        api.updateCell(activeSheetId, rowId, column, value).catch(console.error);
+        api.updateCell(activeSheetId, rowId, column, value).catch((err) => {
+          toast(`Failed to save cell: ${(err as Error).message}`);
+        });
       }
     }
   },
 
-  addRow: () => {
+  addRow: async () => {
     const { rows, activeSheetMeta, activeSheetId } = get();
-    if (!activeSheetMeta) return;
+    if (!activeSheetMeta) return undefined;
 
     const newRow: Record<string, unknown> = {};
     for (const col of activeSheetMeta.columns) {
@@ -123,16 +141,128 @@ export const useSheetStore = create<SheetState>((set, get) => ({
           newRow[col.name] = '';
       }
     }
-    // Assign a temporary stable index
     newRow.__idx = `new_${Date.now()}`;
 
     set({ rows: [...rows, newRow] });
 
     if (activeSheetId) {
-      // Add row to server, then reload to get proper rowid
-      api.addRow(activeSheetId, newRow).then(() => {
+      try {
+        const result = await api.addRow(activeSheetId, newRow);
+        const rowid = (result as { success: boolean; rowid?: number }).rowid;
+        await get().loadSheet(activeSheetId);
+        return rowid;
+      } catch (err) {
+        toast(`Failed to add row: ${(err as Error).message}`);
         get().loadSheet(activeSheetId);
-      }).catch(console.error);
+        return undefined;
+      }
     }
+    return undefined;
+  },
+
+  deleteRow: (rowIndex: number) => {
+    const { rows, activeSheetId } = get();
+    const row = rows[rowIndex];
+    if (!row) return;
+
+    const newRows = rows.filter((_, i) => i !== rowIndex);
+    set({ rows: newRows });
+
+    if (activeSheetId && row.rowid !== undefined) {
+      api.deleteRows(activeSheetId, [row.rowid as number]).catch((err) => {
+        toast(`Failed to delete row: ${(err as Error).message}`);
+        get().loadSheet(activeSheetId);
+      });
+    }
+  },
+
+  deleteRows: (rowIndices: number[]) => {
+    const { rows, activeSheetId } = get();
+    const rowIds = rowIndices
+      .map((i) => rows[i]?.rowid as number | undefined)
+      .filter((id): id is number => id !== undefined);
+
+    const indexSet = new Set(rowIndices);
+    const newRows = rows.filter((_, i) => !indexSet.has(i));
+    set({ rows: newRows, selectedRowIds: new Set() });
+
+    if (activeSheetId && rowIds.length > 0) {
+      api.deleteRows(activeSheetId, rowIds).catch((err) => {
+        toast(`Failed to delete rows: ${(err as Error).message}`);
+        get().loadSheet(activeSheetId);
+      });
+    }
+  },
+
+  addColumn: async (column) => {
+    const { activeSheetId } = get();
+    if (!activeSheetId) return;
+
+    try {
+      await api.addColumn(activeSheetId, column);
+      await get().loadSheet(activeSheetId);
+    } catch (err) {
+      toast(`Failed to add column: ${(err as Error).message}`);
+    }
+  },
+
+  deleteColumn: async (columnId: string) => {
+    const { activeSheetId } = get();
+    if (!activeSheetId) return;
+
+    try {
+      await api.deleteColumn(activeSheetId, columnId);
+      await get().loadSheet(activeSheetId);
+    } catch (err) {
+      toast(`Failed to delete column: ${(err as Error).message}`);
+    }
+  },
+
+  renameColumn: async (columnId: string, newName: string) => {
+    const { activeSheetId } = get();
+    if (!activeSheetId) return;
+
+    try {
+      await api.updateColumn(activeSheetId, columnId, { name: newName });
+      await get().loadSheet(activeSheetId);
+    } catch (err) {
+      toast(`Failed to rename column: ${(err as Error).message}`);
+    }
+  },
+
+  updateColumnWidth: (columnId: string, width: number) => {
+    const { activeSheetMeta, activeSheetId } = get();
+    if (!activeSheetMeta || !activeSheetId) return;
+
+    const columns = activeSheetMeta.columns.map((c) =>
+      c.id === columnId ? { ...c, width } : c
+    );
+    set({ activeSheetMeta: { ...activeSheetMeta, columns } });
+
+    // Debounced persist is handled by caller
+    api.updateSheet(activeSheetId, { columns }).catch((err) => {
+      toast(`Failed to save column width: ${(err as Error).message}`);
+    });
+  },
+
+  toggleRowSelection: (rowId: number) => {
+    const { selectedRowIds } = get();
+    const next = new Set(selectedRowIds);
+    if (next.has(rowId)) {
+      next.delete(rowId);
+    } else {
+      next.add(rowId);
+    }
+    set({ selectedRowIds: next });
+  },
+
+  selectAllRows: () => {
+    const { rows } = get();
+    const all = new Set(rows.map((r) => r.rowid as number).filter((id) => id !== undefined));
+    set({ selectedRowIds: all });
+  },
+
+  clearSelection: () => {
+    set({ selectedRowIds: new Set() });
   },
 }));

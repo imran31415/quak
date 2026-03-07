@@ -41,6 +41,10 @@ test.describe('Mobile Viewport', () => {
     const sheetName = `Mobile Test ${Date.now()}`;
     await page.getByTestId('new-sheet-input').fill(sheetName);
     await page.getByTestId('create-sheet-btn').click();
+
+    // Handle CreateSheetDialog
+    await page.getByTestId('template-tasks').click();
+    await page.getByTestId('dialog-create-btn').click();
     await page.waitForTimeout(1000);
 
     // Sidebar should close, grid should be visible

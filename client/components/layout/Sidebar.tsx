@@ -1,41 +1,29 @@
 import { useEffect, useState } from 'react';
 import { useSheetStore } from '../../store/sheetStore';
 import { useUIStore } from '../../store/uiStore';
-import type { CellType } from '@shared/constants';
-
-const DEFAULT_COLUMNS = [
-  { name: 'Name', cellType: 'text' as CellType, width: 200 },
-  { name: 'Value', cellType: 'number' as CellType, width: 120 },
-  { name: 'Done', cellType: 'checkbox' as CellType, width: 80 },
-  { name: 'Status', cellType: 'dropdown' as CellType, width: 120, options: ['Todo', 'In Progress', 'Done'] },
-  { name: 'Due Date', cellType: 'date' as CellType, width: 130 },
-  { name: 'Notes', cellType: 'markdown' as CellType, width: 250 },
-];
+import { CreateSheetDialog } from './CreateSheetDialog';
 
 export function Sidebar() {
-  const { sheets, activeSheetId, fetchSheets, loadSheet, createSheet, deleteSheet } = useSheetStore();
+  const { sheets, activeSheetId, fetchSheets, loadSheet, deleteSheet } = useSheetStore();
   const { sidebarOpen, isMobile, setSidebarOpen } = useUIStore();
   const [newName, setNewName] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
 
   useEffect(() => {
-    fetchSheets();
-  }, [fetchSheets]);
+    fetchSheets().then(() => {
+      const saved = localStorage.getItem('quak-active-sheet');
+      if (saved) {
+        const { sheets: currentSheets } = useSheetStore.getState();
+        if (currentSheets.some((s) => s.id === saved)) {
+          loadSheet(saved);
+        }
+      }
+    });
+  }, [fetchSheets, loadSheet]);
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!newName.trim()) return;
-    setCreating(true);
-    try {
-      const id = await createSheet(newName.trim(), DEFAULT_COLUMNS.map((c) => ({
-        id: c.name.toLowerCase().replace(/\s+/g, '_'),
-        ...c,
-      })));
-      setNewName('');
-      await loadSheet(id);
-      if (isMobile) setSidebarOpen(false);
-    } finally {
-      setCreating(false);
-    }
+    setShowDialog(true);
   };
 
   if (!sidebarOpen) return null;
@@ -69,8 +57,9 @@ export function Sidebar() {
             />
             <button
               onClick={handleCreate}
-              disabled={creating || !newName.trim()}
+              disabled={!newName.trim()}
               className="px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              aria-label="Create sheet"
               data-testid="create-sheet-btn"
             >
               +
@@ -105,6 +94,7 @@ export function Sidebar() {
                   if (confirm(`Delete "${sheet.name}"?`)) deleteSheet(sheet.id);
                 }}
                 className="ml-2 text-gray-400 hover:text-red-500"
+                aria-label={`Delete ${sheet.name}`}
                 data-testid={`delete-sheet-${sheet.id}`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,6 +105,16 @@ export function Sidebar() {
           ))}
         </div>
       </aside>
+
+      {showDialog && (
+        <CreateSheetDialog
+          initialName={newName}
+          onClose={() => {
+            setShowDialog(false);
+            setNewName('');
+          }}
+        />
+      )}
     </>
   );
 }

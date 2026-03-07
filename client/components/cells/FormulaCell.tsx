@@ -1,0 +1,15 @@
+import type { ICellRendererParams } from 'ag-grid-community';
+
+export function FormulaCell(props: ICellRendererParams) {
+  const value = props.value;
+  const displayValue = value !== null && value !== undefined ? String(value) : '';
+
+  return (
+    <div className="relative group" data-testid="formula-cell">
+      <span>{displayValue}</span>
+      <span className="absolute top-0 right-0 hidden group-hover:inline-block text-[10px] bg-purple-100 text-purple-700 px-1 rounded-bl">
+        fx
+      </span>
+    </div>
+  );
+}

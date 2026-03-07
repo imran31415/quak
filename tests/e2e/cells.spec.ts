@@ -8,6 +8,9 @@ test.describe('Cell Editing', () => {
     sheetName = `Cells Test ${Date.now()}`;
     await page.getByTestId('new-sheet-input').fill(sheetName);
     await page.getByTestId('create-sheet-btn').click();
+    // Select Task Tracker template and create
+    await page.getByTestId('template-tasks').click();
+    await page.getByTestId('dialog-create-btn').click();
     await expect(page.getByTestId('spreadsheet-grid')).toBeVisible();
 
     // Add a row
@@ -16,8 +19,8 @@ test.describe('Cell Editing', () => {
   });
 
   test('edits a text cell', async ({ page }) => {
-    // Double-click the Name cell to edit
-    const nameCell = page.getByRole('gridcell').first();
+    // Double-click the Name cell in the first data row
+    const nameCell = page.locator('[row-index="0"] [col-id="Name"]');
     await nameCell.dblclick();
 
     const editor = page.getByRole('textbox', { name: 'Input Editor' });
@@ -45,8 +48,8 @@ test.describe('Cell Editing', () => {
   });
 
   test('edits a number cell', async ({ page }) => {
-    // The Value column is the second cell — double-click to edit
-    const valueCell = page.getByRole('gridcell', { name: '0' }).first();
+    // The Value column in the first data row
+    const valueCell = page.locator('[row-index="0"] [col-id="Value"]');
     await valueCell.dblclick();
 
     const editor = page.getByRole('textbox', { name: 'Input Editor' });

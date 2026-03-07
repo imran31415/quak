@@ -1,17 +1,39 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useUIStore } from '../../store/uiStore';
 import { useQuery } from '../../hooks/useQuery';
+import { useQueryStore } from '../../store/queryStore';
 import { QueryResults } from './QueryResults';
+import { QueryHistory } from './QueryHistory';
+import { QueryTemplates } from './QueryTemplates';
+import { TableList } from './TableList';
+import { SQLHighlighter } from './SQLHighlighter';
 
 export function QueryPanel() {
   const { queryPanelOpen, isMobile } = useUIStore();
   const [sql, setSql] = useState('SELECT * FROM current_sheet LIMIT 100');
   const { result, error, loading, execute } = useQuery();
+  const addToHistory = useQueryStore((s) => s.addToHistory);
+
+  const handleInsertSQL = useCallback((newSql: string) => {
+    setSql(newSql);
+  }, []);
+
+  const handleInsertTableName = useCallback((tableName: string) => {
+    setSql((prev) => prev + ' ' + tableName);
+  }, []);
 
   if (!queryPanelOpen) return null;
 
-  const handleRun = () => {
-    if (sql.trim()) execute(sql.trim());
+  const handleRun = async () => {
+    if (!sql.trim()) return;
+    try {
+      const qr = await execute(sql.trim());
+      if (qr) {
+        addToHistory(sql.trim(), { rowCount: qr.rowCount, time: qr.time });
+      }
+    } catch {
+      addToHistory(sql.trim());
+    }
   };
 
   return (
@@ -25,6 +47,7 @@ export function QueryPanel() {
     >
       <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-200">
         <span className="text-sm font-medium text-gray-700">SQL Query</span>
+        <QueryTemplates onInsert={handleInsertSQL} />
         <button
           onClick={handleRun}
           disabled={loading || !sql.trim()}
@@ -34,20 +57,22 @@ export function QueryPanel() {
           {loading ? 'Running...' : 'Run'}
         </button>
       </div>
-      <div className="px-4 py-2">
-        <textarea
-          value={sql}
-          onChange={(e) => setSql(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault();
-              handleRun();
-            }
-          }}
-          className="w-full h-20 px-3 py-2 text-sm font-mono border border-gray-300 rounded resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
-          placeholder="Enter SQL query..."
-          data-testid="query-input"
-        />
+      <div className="px-4 py-2 flex gap-3">
+        <div className="flex-1">
+          <SQLHighlighter
+            value={sql}
+            onChange={setSql}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                handleRun();
+              }
+            }}
+          />
+        </div>
+        <div className="w-40 shrink-0 overflow-y-auto">
+          <TableList onInsert={handleInsertTableName} />
+        </div>
       </div>
       {error && (
         <div className="px-4 py-2 text-sm text-red-600" data-testid="query-error">
@@ -55,6 +80,7 @@ export function QueryPanel() {
         </div>
       )}
       {result && <QueryResults result={result} />}
+      <QueryHistory onSelect={handleInsertSQL} />
     </div>
   );
 }

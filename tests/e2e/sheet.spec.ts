@@ -15,8 +15,13 @@ test.describe('Sheet CRUD', () => {
     await page.getByTestId('new-sheet-input').fill(sheetName);
     await page.getByTestId('create-sheet-btn').click();
 
+    // Dialog should appear — select Task Tracker template and create
+    await expect(page.getByTestId('create-sheet-dialog')).toBeVisible();
+    await page.getByTestId('template-tasks').click();
+    await page.getByTestId('dialog-create-btn').click();
+
     // Sheet should appear in sidebar and grid should load
-    await expect(page.getByText(sheetName)).toBeVisible();
+    await expect(page.getByTestId('sheet-list').getByText(sheetName)).toBeVisible();
     await expect(page.getByTestId('spreadsheet-grid')).toBeVisible();
     await expect(page.getByTestId('status-bar')).toContainText('0 rows');
     await expect(page.getByTestId('status-bar')).toContainText('6 columns');
@@ -26,6 +31,8 @@ test.describe('Sheet CRUD', () => {
     const sheetName = `Rows Test ${Date.now()}`;
     await page.getByTestId('new-sheet-input').fill(sheetName);
     await page.getByTestId('create-sheet-btn').click();
+    await page.getByTestId('template-tasks').click();
+    await page.getByTestId('dialog-create-btn').click();
     await expect(page.getByTestId('spreadsheet-grid')).toBeVisible();
 
     // Add two rows
@@ -41,6 +48,8 @@ test.describe('Sheet CRUD', () => {
     const sheetName = `Persist Test ${Date.now()}`;
     await page.getByTestId('new-sheet-input').fill(sheetName);
     await page.getByTestId('create-sheet-btn').click();
+    await page.getByTestId('template-tasks').click();
+    await page.getByTestId('dialog-create-btn').click();
     await expect(page.getByTestId('spreadsheet-grid')).toBeVisible();
 
     // Add a row
@@ -52,10 +61,10 @@ test.describe('Sheet CRUD', () => {
     await page.waitForTimeout(1000);
 
     // Sheet should still be in sidebar
-    await expect(page.getByText(sheetName)).toBeVisible();
+    await expect(page.getByTestId('sheet-list').getByText(sheetName)).toBeVisible();
 
-    // Click the sheet
-    await page.getByText(sheetName).click();
+    // Click the sheet (may already be loaded via persist)
+    await page.getByTestId('sheet-list').getByText(sheetName).click();
     await page.waitForTimeout(1000);
 
     // Row should still be there
@@ -66,13 +75,15 @@ test.describe('Sheet CRUD', () => {
     const sheetName = `Delete Test ${Date.now()}`;
     await page.getByTestId('new-sheet-input').fill(sheetName);
     await page.getByTestId('create-sheet-btn').click();
+    await page.getByTestId('template-tasks').click();
+    await page.getByTestId('dialog-create-btn').click();
     await expect(page.getByTestId('spreadsheet-grid')).toBeVisible();
 
     // Set up dialog handler to accept the confirm
     page.on('dialog', (dialog) => dialog.accept());
 
     // Find the delete button for this specific sheet using data-testid
-    const sheetItem = page.getByText(sheetName);
+    const sheetItem = page.getByTestId('sheet-list').getByText(sheetName);
     const container = sheetItem.locator('..');
     await container.locator('button[data-testid^="delete-sheet-"]').click();
     await page.waitForTimeout(500);
@@ -80,5 +91,29 @@ test.describe('Sheet CRUD', () => {
     // Sheet should be removed
     await expect(page.getByText(sheetName)).not.toBeVisible();
     await expect(page.getByText('No sheet selected')).toBeVisible();
+  });
+
+  test('creates a blank sheet using template', async ({ page }) => {
+    const sheetName = `Blank Sheet ${Date.now()}`;
+    await page.getByTestId('new-sheet-input').fill(sheetName);
+    await page.getByTestId('create-sheet-btn').click();
+
+    await page.getByTestId('template-blank').click();
+    await page.getByTestId('dialog-create-btn').click();
+
+    await expect(page.getByTestId('spreadsheet-grid')).toBeVisible();
+    await expect(page.getByTestId('status-bar')).toContainText('1 columns');
+  });
+
+  test('creates a budget sheet using template', async ({ page }) => {
+    const sheetName = `Budget Sheet ${Date.now()}`;
+    await page.getByTestId('new-sheet-input').fill(sheetName);
+    await page.getByTestId('create-sheet-btn').click();
+
+    await page.getByTestId('template-budget').click();
+    await page.getByTestId('dialog-create-btn').click();
+
+    await expect(page.getByTestId('spreadsheet-grid')).toBeVisible();
+    await expect(page.getByTestId('status-bar')).toContainText('4 columns');
   });
 });

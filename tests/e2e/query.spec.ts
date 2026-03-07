@@ -6,6 +6,8 @@ test.describe('SQL Query Panel', () => {
     const sheetName = `Query Test ${Date.now()}`;
     await page.getByTestId('new-sheet-input').fill(sheetName);
     await page.getByTestId('create-sheet-btn').click();
+    await page.getByTestId('template-tasks').click();
+    await page.getByTestId('dialog-create-btn').click();
     await expect(page.getByTestId('spreadsheet-grid')).toBeVisible();
 
     // Add a row and edit it

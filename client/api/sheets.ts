@@ -41,7 +41,7 @@ export const api = {
     }),
 
   addRow: (sheetId: string, row: Record<string, unknown>) =>
-    request(`/sheets/${sheetId}/rows`, {
+    request<{ success: boolean; rowid: number }>(`/sheets/${sheetId}/rows`, {
       method: 'POST',
       body: JSON.stringify(row),
     }),
@@ -51,6 +51,44 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ rows }),
     }),
+
+  deleteRows: (sheetId: string, rowIds: number[]) =>
+    request(`/sheets/${sheetId}/rows`, {
+      method: 'DELETE',
+      body: JSON.stringify({ rowIds }),
+    }),
+
+  addColumn: (sheetId: string, column: { name: string; cellType: string; width?: number; options?: string[] }) =>
+    request(`/sheets/${sheetId}/columns`, {
+      method: 'POST',
+      body: JSON.stringify(column),
+    }),
+
+  deleteColumn: (sheetId: string, columnId: string) =>
+    request(`/sheets/${sheetId}/columns/${columnId}`, { method: 'DELETE' }),
+
+  updateColumn: (sheetId: string, columnId: string, data: Partial<{ name: string; cellType: string; width: number; options: string[] }>) =>
+    request(`/sheets/${sheetId}/columns/${columnId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  importFile: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${BASE}/import`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+
+  exportSheet: (sheetId: string, format: 'csv' | 'json') =>
+    `${BASE}/sheets/${sheetId}/export?format=${format}`,
 
   runQuery: (sql: string) =>
     request<QueryResult>('/query', {

@@ -15,6 +15,13 @@ router.post('/api/query', async (req: Request, res: Response) => {
       return;
     }
 
+    // Basic SQL sandboxing — only allow SELECT queries
+    const forbidden = /\b(CREATE|DROP|ALTER|DELETE|UPDATE|INSERT|TRUNCATE|GRANT|REVOKE)\b/i;
+    if (forbidden.test(sql)) {
+      res.status(403).json({ error: 'Only SELECT queries are allowed' });
+      return;
+    }
+
     const db = getDb();
 
     const start = performance.now();

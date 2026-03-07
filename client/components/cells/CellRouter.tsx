@@ -5,6 +5,7 @@ import { CheckboxCell } from './CheckboxCell';
 import { DropdownCell } from './DropdownCell';
 import { DateCell } from './DateCell';
 import { MarkdownCell } from './MarkdownCell';
+import { FormulaCell } from './FormulaCell';
 import type { CellType } from '@shared/constants';
 
 const renderers: Record<CellType, React.ComponentType<ICellRendererParams>> = {
@@ -13,7 +14,7 @@ const renderers: Record<CellType, React.ComponentType<ICellRendererParams>> = {
   checkbox: CheckboxCell,
   dropdown: DropdownCell,
   date: DateCell,
-  formula: TextCell,
+  formula: FormulaCell,
   markdown: MarkdownCell,
 };
 

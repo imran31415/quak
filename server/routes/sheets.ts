@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import crypto from 'crypto';
 import { getDb } from '../db.js';
+import { batchInsert } from '../utils/batchInsert.js';
 
 const router = Router();
 
@@ -240,14 +241,8 @@ router.put('/api/sheets/:id/rows', async (req: Request, res: Response) => {
     // Delete all existing rows
     await db.run(`DELETE FROM "${tableName}"`);
 
-    // Insert new rows
-    for (const row of rows) {
-      const colNames = sheetColumns.map((c) => `"${c.name.replace(/"/g, '""')}"`).join(', ');
-      const values = sheetColumns
-        .map((col) => formatValue(row[col.name], col.cellType))
-        .join(', ');
-      await db.run(`INSERT INTO "${tableName}" (${colNames}) VALUES (${values})`);
-    }
+    // Insert new rows in batches
+    await batchInsert(db, tableName, sheetColumns, rows);
 
     res.json({ success: true, rowCount: rows.length });
   } catch (err: unknown) {
@@ -297,7 +292,12 @@ router.post('/api/sheets/:id/rows', async (req: Request, res: Response) => {
 
     await db.run(`INSERT INTO "${tableName}" (${colNames}) VALUES (${values})`);
 
-    res.status(201).json({ success: true });
+    // Return the rowid of the newly inserted row
+    const lastRowResult = await db.runAndReadAll(`SELECT max(rowid) as last_rowid FROM "${tableName}"`);
+    const lastRowRows = lastRowResult.getRowObjectsJson();
+    const lastRowid = (lastRowRows[0] as Record<string, unknown>)?.last_rowid;
+
+    res.status(201).json({ success: true, rowid: lastRowid });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     res.status(500).json({ error: message });
@@ -350,6 +350,197 @@ router.put('/api/sheets/:id/cells', async (req: Request, res: Response) => {
     );
 
     res.json({ success: true });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/sheets/:id/rows  —  delete specific rows by rowid
+// ---------------------------------------------------------------------------
+router.delete('/api/sheets/:id/rows', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const { rowIds } = req.body as { rowIds: number[] };
+
+    if (!rowIds || !Array.isArray(rowIds) || rowIds.length === 0) {
+      res.status(400).json({ error: 'rowIds array is required' });
+      return;
+    }
+
+    const db = getDb();
+    const tableName = safeTableName(id);
+
+    const idList = rowIds.map(Number).join(', ');
+    await db.run(`DELETE FROM "${tableName}" WHERE rowid IN (${idList})`);
+
+    res.json({ success: true, deleted: rowIds.length });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/sheets/:id/columns  —  add a column
+// ---------------------------------------------------------------------------
+router.post('/api/sheets/:id/columns', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const { name, cellType, width, options } = req.body as {
+      name: string;
+      cellType: string;
+      width?: number;
+      options?: string[];
+    };
+
+    if (!name || !cellType) {
+      res.status(400).json({ error: 'name and cellType are required' });
+      return;
+    }
+
+    const db = getDb();
+    const tableName = safeTableName(id);
+
+    // Add column to DuckDB table
+    const safeName = name.replace(/"/g, '""');
+    await db.run(`ALTER TABLE "${tableName}" ADD COLUMN "${safeName}" ${cellTypeToDuckDB(cellType)}`);
+
+    // Update columns metadata
+    const metaResult = await db.runAndReadAll(
+      `SELECT columns FROM __quak_sheets WHERE id = '${id.replace(/'/g, "''")}'`
+    );
+    const metaRows = metaResult.getRowObjectsJson();
+    if (metaRows.length === 0) {
+      res.status(404).json({ error: 'Sheet not found' });
+      return;
+    }
+
+    const columnsRaw = (metaRows[0] as Record<string, unknown>).columns;
+    const columns = (typeof columnsRaw === 'string' ? JSON.parse(columnsRaw) : columnsRaw) as Record<string, unknown>[];
+
+    const colId = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const newCol: Record<string, unknown> = { id: colId, name, cellType, width: width || 150 };
+    if (options) newCol.options = options;
+    columns.push(newCol);
+
+    const columnsJson = JSON.stringify(columns);
+    await db.run(
+      `UPDATE __quak_sheets SET columns = '${columnsJson.replace(/'/g, "''")}', updated_at = current_timestamp WHERE id = '${id.replace(/'/g, "''")}'`
+    );
+
+    res.status(201).json(newCol);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/sheets/:id/columns/:columnId  —  delete a column
+// ---------------------------------------------------------------------------
+router.delete('/api/sheets/:id/columns/:columnId', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const columnId = req.params.columnId as string;
+
+    const db = getDb();
+    const tableName = safeTableName(id);
+
+    // Get columns metadata
+    const metaResult = await db.runAndReadAll(
+      `SELECT columns FROM __quak_sheets WHERE id = '${id.replace(/'/g, "''")}'`
+    );
+    const metaRows = metaResult.getRowObjectsJson();
+    if (metaRows.length === 0) {
+      res.status(404).json({ error: 'Sheet not found' });
+      return;
+    }
+
+    const columnsRaw = (metaRows[0] as Record<string, unknown>).columns;
+    const columns = (typeof columnsRaw === 'string' ? JSON.parse(columnsRaw) : columnsRaw) as Record<string, unknown>[];
+
+    const col = columns.find((c) => c.id === columnId);
+    if (!col) {
+      res.status(404).json({ error: 'Column not found' });
+      return;
+    }
+
+    const colName = (col.name as string).replace(/"/g, '""');
+    await db.run(`ALTER TABLE "${tableName}" DROP COLUMN "${colName}"`);
+
+    const updatedColumns = columns.filter((c) => c.id !== columnId);
+    const columnsJson = JSON.stringify(updatedColumns);
+    await db.run(
+      `UPDATE __quak_sheets SET columns = '${columnsJson.replace(/'/g, "''")}', updated_at = current_timestamp WHERE id = '${id.replace(/'/g, "''")}'`
+    );
+
+    res.json({ success: true });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PUT /api/sheets/:id/columns/:columnId  —  rename or change column type
+// ---------------------------------------------------------------------------
+router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const columnId = req.params.columnId as string;
+    const { name: newName, cellType: newCellType, width: newWidth, options: newOptions } = req.body as {
+      name?: string;
+      cellType?: string;
+      width?: number;
+      options?: string[];
+    };
+
+    const db = getDb();
+    const tableName = safeTableName(id);
+
+    // Get columns metadata
+    const metaResult = await db.runAndReadAll(
+      `SELECT columns FROM __quak_sheets WHERE id = '${id.replace(/'/g, "''")}'`
+    );
+    const metaRows = metaResult.getRowObjectsJson();
+    if (metaRows.length === 0) {
+      res.status(404).json({ error: 'Sheet not found' });
+      return;
+    }
+
+    const columnsRaw = (metaRows[0] as Record<string, unknown>).columns;
+    const columns = (typeof columnsRaw === 'string' ? JSON.parse(columnsRaw) : columnsRaw) as Record<string, unknown>[];
+
+    const colIndex = columns.findIndex((c) => c.id === columnId);
+    if (colIndex === -1) {
+      res.status(404).json({ error: 'Column not found' });
+      return;
+    }
+
+    const col = columns[colIndex];
+    const oldName = col.name as string;
+
+    // Rename in DuckDB if name changed
+    if (newName && newName !== oldName) {
+      const safeOld = oldName.replace(/"/g, '""');
+      const safeNew = newName.replace(/"/g, '""');
+      await db.run(`ALTER TABLE "${tableName}" RENAME COLUMN "${safeOld}" TO "${safeNew}"`);
+      col.name = newName;
+    }
+
+    if (newCellType) col.cellType = newCellType;
+    if (newWidth !== undefined) col.width = newWidth;
+    if (newOptions !== undefined) col.options = newOptions;
+
+    columns[colIndex] = col;
+    const columnsJson = JSON.stringify(columns);
+    await db.run(
+      `UPDATE __quak_sheets SET columns = '${columnsJson.replace(/'/g, "''")}', updated_at = current_timestamp WHERE id = '${id.replace(/'/g, "''")}'`
+    );
+
+    res.json(col);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     res.status(500).json({ error: message });

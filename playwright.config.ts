@@ -16,6 +16,7 @@ export default defineConfig({
       url: 'http://localhost:3001/api/health',
       reuseExistingServer: true,
       timeout: 15000,
+      env: { ...process.env, MOCK_LLM: 'true' },
     },
     {
       command: 'npx vite --port 5173 --strictPort',

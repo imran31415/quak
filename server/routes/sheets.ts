@@ -2,43 +2,9 @@ import { Router, type Request, type Response } from 'express';
 import crypto from 'crypto';
 import { getDb } from '../db.js';
 import { batchInsert } from '../utils/batchInsert.js';
+import { cellTypeToDuckDB, safeTableName, formatValue } from '../utils/sql.js';
 
 const router = Router();
-
-/**
- * Map a cellType string to a DuckDB column type.
- */
-function cellTypeToDuckDB(cellType: string): string {
-  switch (cellType) {
-    case 'number':
-      return 'DOUBLE';
-    case 'checkbox':
-      return 'BOOLEAN';
-    case 'date':
-      return 'DATE';
-    case 'text':
-    case 'dropdown':
-    case 'formula':
-    case 'markdown':
-    default:
-      return 'VARCHAR';
-  }
-}
-
-/**
- * Sanitize a sheet id to produce a safe table name.
- * Only allows alphanumeric characters and underscores.
- */
-function safeTableName(id: string): string {
-  return 'sheet_' + id.replace(/[^a-zA-Z0-9_]/g, '_');
-}
-
-function formatValue(val: unknown, cellType: string): string {
-  if (val === null || val === undefined || val === '') return 'NULL';
-  if (cellType === 'number') return String(Number(val));
-  if (cellType === 'checkbox') return val ? 'TRUE' : 'FALSE';
-  return `'${String(val).replace(/'/g, "''")}'`;
-}
 
 // ---------------------------------------------------------------------------
 // GET /api/sheets  —  list all sheets (metadata only)

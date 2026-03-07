@@ -29,6 +29,7 @@ export default defineConfig({
         text: 'Features',
         items: [
           { text: 'Overview', link: '/features/' },
+          { text: 'AI Chat Assistant', link: '/features/ai-chat' },
           { text: 'Multiple Views', link: '/features/views' },
           { text: 'Cell Types', link: '/features/cell-types' },
           { text: 'SQL Query Panel', link: '/features/sql-queries' },

@@ -42,12 +42,13 @@ make verify
 
 ## E2E Tests (Playwright)
 
-12 test files that drive a real browser:
+14 test files that drive a real browser:
 
 | Test File | What It Tests |
 |-----------|---------------|
 | `cells.spec.ts` | Cell editing for each type |
 | `charts.spec.ts` | Chart rendering and interactions |
+| `chat.spec.ts` | AI chat panel, tool calls, mock LLM responses |
 | `columns.spec.ts` | Column operations (add, rename, delete, type change) |
 | `filter-sort.spec.ts` | Search, column filters, sorting |
 | `import-export.spec.ts` | File import and data export |
@@ -58,6 +59,7 @@ make verify
 | `query.spec.ts` | SQL query execution and results |
 | `row-operations.spec.ts` | Row add, delete, and selection |
 | `sheet.spec.ts` | Sheet CRUD operations |
+| `views.spec.ts` | Grid, Kanban, Calendar, Gallery views |
 
 ## Test Architecture
 
@@ -65,3 +67,4 @@ make verify
 - **Unit tests** use Vitest with fast in-memory execution
 - Both share test fixtures from `tests/helpers/fixtures.ts`
 - E2E tests clean the database before each run for isolation
+- Chat tests use `MOCK_LLM=true` environment variable for deterministic LLM responses without external API calls

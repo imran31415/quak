@@ -12,6 +12,9 @@ hero:
       text: Explore Features
       link: /features/
 features:
+  - icon: "\U0001F916"
+    title: AI Chat Assistant
+    details: Manage your spreadsheets with natural language. Create sheets, add rows, run queries — just ask.
   - icon: "\U0001F4CA"
     title: 7 Cell Types
     details: Text, numbers, checkboxes, dropdowns, date pickers, formulas, and rendered markdown — all in one grid.
@@ -27,9 +30,6 @@ features:
   - icon: "\U0001F4E5"
     title: Import & Export
     details: Drag-and-drop CSV, TSV, or JSON files. Export your data anytime.
-  - icon: "\U0001F504"
-    title: Undo & Redo
-    details: Full undo/redo stack for cell edits, row operations, and column changes.
 ---
 
 <div style="margin-top: 2rem; text-align: center;">

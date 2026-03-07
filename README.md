@@ -6,6 +6,7 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 
 ## Features
 
+- **AI Chat Assistant** — natural-language interface powered by LLMs (OpenRouter). Ask "add 5 sample tasks" instead of clicking through the UI. Supports tool calling with an agentic loop.
 - **Multiple views** — Grid, Kanban, Calendar, and Gallery views over the same data
 - **7 cell types** — text, numbers, checkboxes, dropdowns, date pickers, formulas, and markdown all in one sheet
 - **In-browser SQL** — query your spreadsheet data with DuckDB-WASM, with syntax highlighting and query templates
@@ -36,6 +37,10 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 ### Gallery View
 
 ![Gallery View](screenshots/gallery-view.png)
+
+### AI Chat Assistant
+
+![AI Chat](screenshots/ai-chat.png)
 
 ### Mobile
 
@@ -89,6 +94,7 @@ Then open http://localhost:5173 to browse the docs, including:
 - [Charts](docs/features/charts.md) — bar, line, and pie visualization
 - [Import & Export](docs/features/import-export.md) — file formats and type inference
 - [Search & Filtering](docs/features/search-filtering.md) — search, filters, and sorting
+- [AI Chat Assistant](docs/features/ai-chat.md) — natural-language data management with tool calling
 - [Architecture](docs/architecture.md) — dual-DuckDB architecture and data flow
 
 ## Project Structure
@@ -99,16 +105,17 @@ quak/
 ├── client/          # React frontend
 │   ├── db/          # DuckDB-WASM setup
 │   ├── api/         # Server API calls
-│   ├── store/       # Zustand stores (sheet, UI, undo, query, toast)
+│   ├── store/       # Zustand stores (sheet, UI, undo, query, chat, toast)
 │   ├── hooks/       # Custom hooks
 │   └── components/  # UI components
 │       ├── layout/  # AppShell, Header, Sidebar, MobileNav
 │       ├── grid/    # SpreadsheetGrid, GridToolbar, StatusBar
 │       ├── views/   # ViewContainer, Kanban, Calendar, Gallery
 │       ├── cells/   # CellRouter + per-type renderers
+│       ├── chat/    # AI chat panel + tool call cards
 │       ├── query/   # SQL panel, charts, history, templates
 │       └── import/  # File import dialog
-├── server/          # Express backend + DuckDB storage
+├── server/          # Express backend + DuckDB storage + LLM integration
 ├── tests/           # Unit (Vitest) + E2E (Playwright)
 └── docs/            # VitePress documentation site
 ```
@@ -130,7 +137,7 @@ quak/
 ```bash
 make test           # All tests (unit + E2E)
 make test-unit      # Unit tests only (Vitest, 9 files)
-make test-e2e       # E2E tests only (Playwright, 13 files)
+make test-e2e       # E2E tests only (Playwright, 14 files)
 make test-file F=query  # Single E2E test file
 make check          # Quick: typecheck + unit
 make verify         # Full: typecheck + unit + E2E

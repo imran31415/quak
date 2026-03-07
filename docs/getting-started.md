@@ -46,9 +46,11 @@ make clean-db   # Remove DuckDB database files only
 3. Click **+ Row** to add data rows
 4. Click any cell to edit its value
 5. Click the **SQL** button to open the query panel and run queries against your data
+6. Click the **AI** button to open the chat assistant and manage data with natural language
 
 ## What's Next
 
+- Try the [AI Chat Assistant](/features/ai-chat) for natural-language data management
 - Learn about all [Cell Types](/features/cell-types)
 - Run [SQL Queries](/features/sql-queries) against your data
 - Visualize results with [Charts](/features/charts)

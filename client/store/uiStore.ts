@@ -13,6 +13,7 @@ export interface ViewConfig {
 interface UIState {
   sidebarOpen: boolean;
   queryPanelOpen: boolean;
+  chatPanelOpen: boolean;
   isMobile: boolean;
   searchOpen: boolean;
   importDialogOpen: boolean;
@@ -22,6 +23,8 @@ interface UIState {
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   toggleQueryPanel: () => void;
+  toggleChatPanel: () => void;
+  setChatPanelOpen: (open: boolean) => void;
   setIsMobile: (mobile: boolean) => void;
   setSearchOpen: (open: boolean) => void;
   setImportDialogOpen: (open: boolean) => void;
@@ -36,6 +39,7 @@ export const useUIStore = create<UIState>()(
     (set, get) => ({
       sidebarOpen: true,
       queryPanelOpen: false,
+      chatPanelOpen: false,
       isMobile: false,
       searchOpen: false,
       importDialogOpen: false,
@@ -45,6 +49,8 @@ export const useUIStore = create<UIState>()(
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       toggleQueryPanel: () => set((s) => ({ queryPanelOpen: !s.queryPanelOpen })),
+      toggleChatPanel: () => set((s) => ({ chatPanelOpen: !s.chatPanelOpen })),
+      setChatPanelOpen: (open) => set({ chatPanelOpen: open }),
       setIsMobile: (mobile) => set({ isMobile: mobile, sidebarOpen: !mobile }),
       setSearchOpen: (open) => set({ searchOpen: open }),
       setImportDialogOpen: (open) => set({ importDialogOpen: open }),

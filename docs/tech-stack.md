@@ -23,12 +23,20 @@
 | [Multer](https://github.com/expressjs/multer) | 1.x | File upload handling |
 | [CORS](https://github.com/expressjs/cors) | 2.x | Cross-origin requests |
 
+## AI Integration
+
+| Technology | Purpose |
+|-----------|---------|
+| [OpenRouter](https://openrouter.ai) | Multi-provider LLM API gateway |
+| Server-Sent Events (SSE) | Real-time streaming of LLM responses |
+| Native `fetch` | HTTP streaming client (no extra dependencies) |
+
 ## Testing
 
 | Technology | Purpose |
 |-----------|---------|
 | [Vitest](https://vitest.dev) | Unit testing (9 test files) |
-| [Playwright](https://playwright.dev) | E2E testing (12 test files) |
+| [Playwright](https://playwright.dev) | E2E testing (14 test files) |
 
 ## Development
 

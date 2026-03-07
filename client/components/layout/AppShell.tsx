@@ -3,6 +3,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { ShortcutPalette } from './ShortcutPalette';
+import { ChatPanel } from '../chat/ChatPanel';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useUIStore } from '../../store/uiStore';
 
@@ -36,9 +37,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className={`flex-1 overflow-auto ${isMobile ? 'pb-14' : ''}`} data-testid="main-content">
+        <main className={`flex-1 min-w-0 overflow-auto ${isMobile ? 'pb-14' : ''}`} data-testid="main-content">
           {children}
         </main>
+        <ChatPanel />
       </div>
       <MobileNav />
       {showShortcuts && <ShortcutPalette onClose={() => setShowShortcuts(false)} />}

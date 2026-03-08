@@ -7,7 +7,11 @@ Quak combines a traditional spreadsheet grid with SQL-powered data capabilities.
 | Feature | Description |
 |---------|-------------|
 | [AI Chat Assistant](/features/ai-chat) | Natural-language spreadsheet management with LLM tool calling |
-| [Multiple Views](/features/views) | Grid, Kanban, Calendar, and Gallery views over the same data |
+| [Column Freezing](/features/column-freezing) | Pin columns to stay visible while scrolling horizontally |
+| [Conditional Formatting](/features/conditional-formatting) | Color-code cells based on value rules |
+| [Data Validation](/features/data-validation) | Enforce required, min/max, regex rules with visual feedback |
+| [Row Grouping](/features/row-grouping) | Group rows by column with collapsible headers and subtotals |
+| [Multiple Views](/features/views) | Grid, Kanban, Calendar, Gallery, and Pivot views over the same data |
 | [Cell Types](/features/cell-types) | 7 types — text, number, checkbox, dropdown, date, formula, markdown |
 | [SQL Queries](/features/sql-queries) | In-browser SQL via DuckDB-WASM with syntax highlighting |
 | [Charts](/features/charts) | Bar, line, and pie charts from query results |

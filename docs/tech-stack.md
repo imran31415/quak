@@ -35,8 +35,8 @@
 
 | Technology | Purpose |
 |-----------|---------|
-| [Vitest](https://vitest.dev) | Unit testing (9 test files) |
-| [Playwright](https://playwright.dev) | E2E testing (14 test files) |
+| [Vitest](https://vitest.dev) | Unit testing (11 test files, 82 tests) |
+| [Playwright](https://playwright.dev) | E2E testing (20 test files, 89 tests) |
 
 ## Development
 

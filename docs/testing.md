@@ -26,7 +26,7 @@ make verify
 
 ## Unit Tests (Vitest)
 
-9 test files covering core logic:
+11 test files covering core logic:
 
 | Test File | What It Tests |
 |-----------|---------------|
@@ -34,6 +34,8 @@ make verify
 | `exportUtils.test.ts` | Data export to CSV and JSON |
 | `formulaEngine.test.ts` | SQL formula evaluation |
 | `validation.test.ts` | Cell value validation by type |
+| `validationRules.test.ts` | Extended validation rules (required, min/max, regex) |
+| `conditionalFormat.test.ts` | Conditional formatting rule evaluation |
 | `undoStore.test.ts` | Undo/redo stack behavior |
 | `column-management.test.ts` | Column add/delete/rename/type change |
 | `constants.test.ts` | Constants and cell type definitions |
@@ -42,19 +44,25 @@ make verify
 
 ## E2E Tests (Playwright)
 
-14 test files that drive a real browser:
+20 test files that drive a real browser:
 
 | Test File | What It Tests |
 |-----------|---------------|
 | `cells.spec.ts` | Cell editing for each type |
 | `charts.spec.ts` | Chart rendering and interactions |
 | `chat.spec.ts` | AI chat panel, tool calls, mock LLM responses |
+| `chat-tools.spec.ts` | Enhanced AI tools (summarize, sort) |
+| `column-freeze.spec.ts` | Column freezing and unfreezing |
 | `columns.spec.ts` | Column operations (add, rename, delete, type change) |
+| `conditional-format.spec.ts` | Conditional formatting rules and persistence |
+| `data-validation.spec.ts` | Data validation rules and visual feedback |
 | `filter-sort.spec.ts` | Search, column filters, sorting |
+| `grouping.spec.ts` | Row grouping, collapse/expand, subtotals |
 | `import-export.spec.ts` | File import and data export |
 | `keyboard.spec.ts` | Keyboard shortcut handling |
 | `mobile.spec.ts` | Mobile layout and navigation |
 | `multi-sheet-query.spec.ts` | Cross-sheet SQL queries |
+| `pivot.spec.ts` | Pivot table view and aggregation |
 | `query-history.spec.ts` | Query history and pinning |
 | `query.spec.ts` | SQL query execution and results |
 | `row-operations.spec.ts` | Row add, delete, and selection |

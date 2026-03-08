@@ -6,8 +6,13 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 
 ## Features
 
-- **AI Chat Assistant** — natural-language interface powered by LLMs (OpenRouter). Ask "add 5 sample tasks" instead of clicking through the UI. Supports tool calling with an agentic loop.
-- **Multiple views** — Grid, Kanban, Calendar, and Gallery views over the same data
+- **AI Chat Assistant** — natural-language interface powered by LLMs (OpenRouter) with 16 tools including data summarization, sorting, filtering, and conditional formatting
+- **Multiple views** — Grid, Kanban, Calendar, Gallery, and Pivot views over the same data
+- **Pivot tables** — cross-tabulate data with configurable row/column/value fields and SUM/COUNT/AVG/MIN/MAX aggregation
+- **Column freezing** — pin columns to stay visible while scrolling horizontally
+- **Conditional formatting** — color-code cells based on value rules (equals, greater than, contains, etc.)
+- **Data validation** — enforce required fields, min/max values, regex patterns, and custom lists with visual feedback
+- **Row grouping** — group rows by any column with collapsible headers and automatic subtotals
 - **7 cell types** — text, numbers, checkboxes, dropdowns, date pickers, formulas, and markdown all in one sheet
 - **In-browser SQL** — query your spreadsheet data with DuckDB-WASM, with syntax highlighting and query templates
 - **Charts** — visualize query results as bar, line, or pie charts
@@ -38,6 +43,18 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 ### Gallery View
 
 ![Gallery View](screenshots/gallery-view.png)
+
+### Conditional Formatting
+
+![Conditional Formatting](screenshots/conditional-formatting.png)
+
+### Row Grouping
+
+![Row Grouping](screenshots/row-grouping.png)
+
+### Pivot Table
+
+![Pivot Table](screenshots/pivot-table.png)
 
 ### AI Chat Assistant
 
@@ -96,7 +113,12 @@ npm run docs:dev
 
 Then open http://localhost:5173 to browse the docs, including:
 
-- [Multiple Views](docs/features/views.md) — Grid, Kanban, Calendar, and Gallery
+- [Multiple Views](docs/features/views.md) — Grid, Kanban, Calendar, Gallery, and Pivot
+- [Pivot Tables](docs/features/pivot-tables.md) — cross-tabulation with aggregation
+- [Column Freezing](docs/features/column-freezing.md) — pin columns for horizontal scrolling
+- [Conditional Formatting](docs/features/conditional-formatting.md) — color-code cells by value
+- [Data Validation](docs/features/data-validation.md) — enforce data quality rules
+- [Row Grouping](docs/features/row-grouping.md) — group rows with subtotals
 - [Cell Types](docs/features/cell-types.md) — all 7 types with usage details
 - [SQL Queries](docs/features/sql-queries.md) — query panel, templates, and history
 - [Charts](docs/features/charts.md) — bar, line, and pie visualization
@@ -145,8 +167,8 @@ quak/
 
 ```bash
 make test           # All tests (unit + E2E)
-make test-unit      # Unit tests only (Vitest, 9 files)
-make test-e2e       # E2E tests only (Playwright, 15 files)
+make test-unit      # Unit tests only (Vitest, 11 files)
+make test-e2e       # E2E tests only (Playwright, 20 files)
 make test-file F=query  # Single E2E test file
 make check          # Quick: typecheck + unit
 make verify         # Full: typecheck + unit + E2E

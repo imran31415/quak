@@ -48,8 +48,9 @@ quak/
 │   ├── hooks/           # Custom React hooks
 │   └── components/
 │       ├── layout/      # AppShell, Header, Sidebar, MobileNav
-│       ├── grid/        # SpreadsheetGrid, Toolbar, StatusBar
+│       ├── grid/        # SpreadsheetGrid, Toolbar, StatusBar, GroupHeaderRenderer
 │       ├── cells/       # Per-type cell renderers and editors
+│       ├── views/       # ViewContainer, Kanban, Calendar, Gallery, PivotView
 │       ├── chat/        # AI chat panel and tool call cards
 │       ├── query/       # SQL panel, charts, history, templates
 │       └── import/      # File import dialog
@@ -93,7 +94,7 @@ Quak uses six Zustand stores, each with a single responsibility:
 | Store | Purpose |
 |-------|---------|
 | `sheetStore` | Sheet list, active sheet, rows, columns, cell values |
-| `uiStore` | UI flags — mobile detection, query panel, chat panel |
+| `uiStore` | UI flags — mobile, panels, view configs, grouping, pivot |
 | `chatStore` | Chat messages, streaming state, model selection, API key |
 | `undoStore` | Action stack (max 50) for undo/redo |
 | `queryStore` | Query text, results, history, pinned queries |

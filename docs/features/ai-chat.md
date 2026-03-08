@@ -29,7 +29,7 @@ Select a model from the dropdown in the chat panel header:
 
 ## What You Can Do
 
-The assistant has access to 11 tools that cover all spreadsheet operations:
+The assistant has access to 16 tools that cover all spreadsheet operations:
 
 ### Sheet Management
 - **"List all my sheets"** — see all sheets with their columns
@@ -49,6 +49,15 @@ The assistant has access to 11 tools that cover all spreadsheet operations:
 ### SQL Queries
 - **"How many tasks are marked as Done?"** — runs read-only SQL
 - **"Show me the average budget by category"** — complex aggregations
+
+### Data Analysis
+- **"Summarize my data"** — get statistics (min/max/avg for numbers, value counts for text)
+- **"Sort this sheet by name"** — reorder rows by any column
+- **"Filter rows where status is Done"** — query rows matching a condition
+
+### Formatting & Visualization
+- **"Highlight all High priority cells in red"** — apply conditional formatting rules
+- **"Create a chart from Name and Score columns"** — extract chart-ready label/value pairs
 
 ## How It Works
 

@@ -1,6 +1,6 @@
 # Multiple Views
 
-Quak supports four different ways to visualize your data. All views render from the same underlying sheet data — switch between them instantly without duplicating anything.
+Quak supports five different ways to visualize your data. All views render from the same underlying sheet data — switch between them instantly without duplicating anything.
 
 ## View Types
 
@@ -40,6 +40,18 @@ A responsive card grid. Each card shows a title column and up to 5 field values.
 
 <img src="/screenshots/gallery-view.png" alt="Gallery view" style="max-width: 800px; width: 100%; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.12);" />
 
+### Pivot View
+
+A cross-tabulation view that summarizes data with configurable row fields, column fields, value fields, and aggregation functions. Powered by DuckDB-WASM for instant computation.
+
+- Select row field, column field, value field, and aggregation (SUM, COUNT, AVG, MIN, MAX)
+- Grand total row at the bottom
+- Read-only HTML table rendering
+
+See [Pivot Tables](/features/pivot-tables) for full documentation.
+
+<img src="/screenshots/pivot-table.png" alt="Pivot table view" style="max-width: 800px; width: 100%; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.12);" />
+
 ## Switching Views
 
 Click the view buttons in the toolbar above the sheet content:
@@ -50,6 +62,7 @@ Click the view buttons in the toolbar above the sheet content:
 | Kanban | Kanban | Swim lanes from dropdown columns |
 | Calendar | Calendar | Month grid from date columns |
 | Gallery | Gallery | Responsive card grid |
+| Pivot | Pivot | Cross-tabulation summary table |
 
 ## Configuring Views
 
@@ -58,6 +71,7 @@ For Kanban, Calendar, and Gallery views, click the **gear icon** next to the vie
 - **Kanban**: Select which dropdown column defines the lanes
 - **Calendar**: Select which date column places events on the calendar
 - **Gallery**: Select which column to use as the card title
+- **Pivot**: Select row field, column field, value field, and aggregation
 
 ## Persistence
 

@@ -12,6 +12,11 @@ html.dark {
   color-scheme: dark;
 }
 
+.validation-error {
+  outline: 2px solid #ef4444 !important;
+  outline-offset: -2px;
+}
+
 * {
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }

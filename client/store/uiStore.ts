@@ -1,13 +1,24 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type ViewType = 'grid' | 'kanban' | 'calendar' | 'gallery';
+export type ViewType = 'grid' | 'kanban' | 'calendar' | 'gallery' | 'pivot';
+
+export type AggregationType = 'SUM' | 'COUNT' | 'AVG' | 'MIN' | 'MAX';
+
+export interface PivotConfig {
+  rowFieldIds: string[];
+  columnFieldId: string;
+  valueFieldId: string;
+  aggregation: AggregationType;
+}
 
 export interface ViewConfig {
   viewType?: ViewType;
   kanbanColumnId?: string;
   calendarColumnId?: string;
   galleryTitleColumnId?: string;
+  groupByColumnId?: string;
+  pivotConfig?: PivotConfig;
 }
 
 interface UIState {

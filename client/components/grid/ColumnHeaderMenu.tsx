@@ -2,20 +2,29 @@ import { useState, useRef, useEffect } from 'react';
 import { useSheetStore } from '../../store/sheetStore';
 import { CELL_TYPES } from '@shared/constants';
 import type { CellType } from '@shared/constants';
+import type { ConditionalFormatRule, ValidationRule } from '@shared/types';
+import { ConditionalFormatPanel } from './ConditionalFormatPanel';
+import { ValidationRulesPanel } from './ValidationRulesPanel';
+import { useUIStore } from '../../store/uiStore';
 
 interface ColumnHeaderMenuProps {
   columnId: string;
   columnName: string;
   cellType: CellType;
+  pinned?: 'left' | null;
+  conditionalFormats?: ConditionalFormatRule[];
+  validationRules?: ValidationRule[];
 }
 
-export function ColumnHeaderMenu({ columnId, columnName, cellType }: ColumnHeaderMenuProps) {
+export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, conditionalFormats, validationRules }: ColumnHeaderMenuProps) {
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState(columnName);
   const [changingType, setChangingType] = useState(false);
+  const [showConditionalFormat, setShowConditionalFormat] = useState(false);
+  const [showValidationRules, setShowValidationRules] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { renameColumn, deleteColumn } = useSheetStore();
+  const { renameColumn, deleteColumn, updateColumnConfig } = useSheetStore();
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -23,11 +32,13 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType }: ColumnHeade
         setOpen(false);
         setRenaming(false);
         setChangingType(false);
+        setShowConditionalFormat(false);
+        setShowValidationRules(false);
       }
     }
-    if (open) document.addEventListener('mousedown', handleClickOutside);
+    if (open || showConditionalFormat || showValidationRules) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [open]);
+  }, [open, showConditionalFormat, showValidationRules]);
 
   const handleRename = async () => {
     if (newName.trim() && newName !== columnName) {
@@ -52,6 +63,17 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType }: ColumnHeade
       await useSheetStore.getState().loadSheet(activeSheetId);
     }
     setChangingType(false);
+    setOpen(false);
+  };
+
+  const handleToggleFreeze = async () => {
+    const { activeSheetId } = useSheetStore.getState();
+    if (activeSheetId) {
+      const { api } = await import('../../api/sheets');
+      const newPinned = pinned === 'left' ? null : 'left';
+      await api.updateColumn(activeSheetId, columnId, { pinned: newPinned });
+      await useSheetStore.getState().loadSheet(activeSheetId);
+    }
     setOpen(false);
   };
 
@@ -114,6 +136,48 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType }: ColumnHeade
               >
                 Change Type
               </button>
+              <button
+                onClick={handleToggleFreeze}
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                data-testid="freeze-col-btn"
+              >
+                {pinned === 'left' ? 'Unfreeze Column' : 'Freeze Column'}
+              </button>
+              <button
+                onClick={() => { setOpen(false); setShowConditionalFormat(true); }}
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                data-testid="conditional-format-btn"
+              >
+                Conditional Formatting
+              </button>
+              <button
+                onClick={() => { setOpen(false); setShowValidationRules(true); }}
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                data-testid="validation-rules-btn"
+              >
+                Validation Rules
+              </button>
+              {(cellType === 'text' || cellType === 'dropdown') && (() => {
+                const { activeSheetId } = useSheetStore.getState();
+                const viewConfigs = useUIStore.getState().viewConfigs;
+                const isGrouped = activeSheetId && viewConfigs[activeSheetId]?.groupByColumnId === columnId;
+                return (
+                  <button
+                    onClick={() => {
+                      if (activeSheetId) {
+                        useUIStore.getState().setViewConfig(activeSheetId, {
+                          groupByColumnId: isGrouped ? undefined : columnId,
+                        });
+                      }
+                      setOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                    data-testid="group-by-btn"
+                  >
+                    {isGrouped ? 'Remove Grouping' : 'Group by this Column'}
+                  </button>
+                );
+              })()}
               <hr className="my-1 border-gray-100 dark:border-gray-700" />
               <button
                 onClick={handleDelete}
@@ -125,6 +189,26 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType }: ColumnHeade
             </div>
           )}
         </div>
+      )}
+      {showConditionalFormat && (
+        <ConditionalFormatPanel
+          rules={conditionalFormats || []}
+          onSave={async (rules) => {
+            await updateColumnConfig(columnId, { conditionalFormats: rules.length > 0 ? rules : undefined });
+            setShowConditionalFormat(false);
+          }}
+          onClose={() => setShowConditionalFormat(false)}
+        />
+      )}
+      {showValidationRules && (
+        <ValidationRulesPanel
+          rules={validationRules || []}
+          onSave={async (rules) => {
+            await updateColumnConfig(columnId, { validationRules: rules.length > 0 ? rules : undefined });
+            setShowValidationRules(false);
+          }}
+          onClose={() => setShowValidationRules(false)}
+        />
       )}
     </div>
   );

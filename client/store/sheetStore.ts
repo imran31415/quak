@@ -28,6 +28,7 @@ interface SheetState {
   deleteColumn: (columnId: string) => Promise<void>;
   renameColumn: (columnId: string, newName: string) => Promise<void>;
   updateColumnWidth: (columnId: string, width: number) => void;
+  updateColumnConfig: (columnId: string, config: Partial<ColumnConfig>) => Promise<void>;
   toggleRowSelection: (rowId: number) => void;
   selectAllRows: () => void;
   clearSelection: () => void;
@@ -243,6 +244,17 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     api.updateSheet(activeSheetId, { columns }).catch((err) => {
       toast(`Failed to save column width: ${(err as Error).message}`);
     });
+  },
+
+  updateColumnConfig: async (columnId: string, config: Partial<ColumnConfig>) => {
+    const { activeSheetId } = get();
+    if (!activeSheetId) return;
+    try {
+      await api.updateColumn(activeSheetId, columnId, config as Record<string, unknown>);
+      await get().loadSheet(activeSheetId);
+    } catch (err) {
+      toast(`Failed to update column: ${(err as Error).message}`);
+    }
   },
 
   toggleRowSelection: (rowId: number) => {

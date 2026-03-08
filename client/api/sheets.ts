@@ -67,7 +67,7 @@ export const api = {
   deleteColumn: (sheetId: string, columnId: string) =>
     request(`/sheets/${sheetId}/columns/${columnId}`, { method: 'DELETE' }),
 
-  updateColumn: (sheetId: string, columnId: string, data: Partial<{ name: string; cellType: string; width: number; options: string[] }>) =>
+  updateColumn: (sheetId: string, columnId: string, data: Record<string, unknown>) =>
     request(`/sheets/${sheetId}/columns/${columnId}`, {
       method: 'PUT',
       body: JSON.stringify(data),

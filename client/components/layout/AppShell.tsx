@@ -5,10 +5,12 @@ import { MobileNav } from './MobileNav';
 import { ShortcutPalette } from './ShortcutPalette';
 import { ChatPanel } from '../chat/ChatPanel';
 import { useResponsive } from '../../hooks/useResponsive';
+import { useTheme } from '../../hooks/useTheme';
 import { useUIStore } from '../../store/uiStore';
 
 export function AppShell({ children }: { children: ReactNode }) {
   useResponsive();
+  useTheme();
   const isMobile = useUIStore((s) => s.isMobile);
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -33,7 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [showShortcuts]);
 
   return (
-    <div className="h-full flex flex-col bg-gray-100">
+    <div className="h-full flex flex-col bg-gray-100 dark:bg-gray-900">
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />

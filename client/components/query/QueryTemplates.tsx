@@ -16,7 +16,7 @@ export function QueryTemplates({ onInsert }: QueryTemplatesProps) {
         <button
           key={t.label}
           onClick={() => onInsert(t.sql)}
-          className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+          className="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
           data-testid={`template-${t.label.toLowerCase().replace(/\s+/g, '-')}`}
         >
           {t.label}

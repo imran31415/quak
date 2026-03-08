@@ -29,8 +29,8 @@ export function SearchBar({ onSearch, onClose, matchCount }: SearchBarProps) {
   }, [onClose]);
 
   return (
-    <div className="flex items-center gap-2 px-4 py-1.5 bg-yellow-50 border-b border-yellow-200" data-testid="search-bar">
-      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="flex items-center gap-2 px-4 py-1.5 bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-700" data-testid="search-bar">
+      <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
       <input
@@ -39,18 +39,18 @@ export function SearchBar({ onSearch, onClose, matchCount }: SearchBarProps) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search in sheet..."
-        className="flex-1 px-2 py-1 text-sm bg-transparent border-none focus:outline-none"
+        className="flex-1 px-2 py-1 text-sm bg-transparent border-none focus:outline-none text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
         data-testid="search-input"
       />
       {matchCount !== null && matchCount !== undefined && query && (
-        <span className="text-xs text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded" data-testid="search-match-count">
+        <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded" data-testid="search-match-count">
           {matchCount} match{matchCount !== 1 ? 'es' : ''}
         </span>
       )}
       {query && (
         <button
           onClick={() => setQuery('')}
-          className="text-gray-400 hover:text-gray-600"
+          className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
           aria-label="Clear search"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,7 +60,7 @@ export function SearchBar({ onSearch, onClose, matchCount }: SearchBarProps) {
       )}
       <button
         onClick={onClose}
-        className="text-xs text-gray-500 hover:text-gray-700"
+        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
         aria-label="Close search"
         data-testid="search-close"
       >

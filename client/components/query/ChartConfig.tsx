@@ -35,15 +35,15 @@ export function ChartConfig({
   };
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 border-b border-gray-200 text-sm" data-testid="chart-config">
+    <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 text-sm" data-testid="chart-config">
       <div className="flex items-center gap-1">
-        <span className="text-gray-500 text-xs">Type:</span>
+        <span className="text-gray-500 dark:text-gray-400 text-xs">Type:</span>
         {chartTypes.map((t) => (
           <button
             key={t.value}
             onClick={() => onChartTypeChange(t.value)}
             className={`px-2 py-0.5 text-xs rounded ${
-              chartType === t.value ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+              chartType === t.value ? 'bg-blue-600 dark:bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
             }`}
             data-testid={`chart-type-${t.value}`}
           >
@@ -53,11 +53,11 @@ export function ChartConfig({
       </div>
 
       <div className="flex items-center gap-1">
-        <span className="text-gray-500 text-xs">X:</span>
+        <span className="text-gray-500 dark:text-gray-400 text-xs">X:</span>
         <select
           value={xColumn}
           onChange={(e) => onXColumnChange(e.target.value)}
-          className="px-1 py-0.5 text-xs border rounded"
+          className="px-1 py-0.5 text-xs border rounded bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
           data-testid="chart-x-select"
         >
           {result.columns.map((col) => (
@@ -67,13 +67,13 @@ export function ChartConfig({
       </div>
 
       <div className="flex items-center gap-1">
-        <span className="text-gray-500 text-xs">Y:</span>
+        <span className="text-gray-500 dark:text-gray-400 text-xs">Y:</span>
         {result.columns.filter((c) => c !== xColumn).map((col) => (
           <button
             key={col}
             onClick={() => toggleYColumn(col)}
             className={`px-1.5 py-0.5 text-xs rounded ${
-              yColumns.includes(col) ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              yColumns.includes(col) ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
             }`}
           >
             {col}

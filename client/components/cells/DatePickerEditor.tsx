@@ -38,7 +38,7 @@ export const DatePickerEditor = forwardRef((props: ICellEditorParams, ref) => {
       type="date"
       value={value}
       onChange={(e) => setValue(e.target.value)}
-      className="w-full h-full px-2 border-none outline-none bg-white"
+      className="w-full h-full px-2 border-none outline-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
       data-testid="date-picker-editor"
     />
   );

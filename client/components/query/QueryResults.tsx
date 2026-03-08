@@ -33,20 +33,20 @@ export function QueryResults({ result }: { result: QueryResult }) {
   return (
     <div className="flex-1 overflow-auto px-4 pb-4" data-testid="query-results">
       <div className="flex items-center gap-3 mb-2">
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-gray-500 dark:text-gray-400">
           {result.rowCount} rows · {result.time}ms
         </div>
         <div className="flex gap-1">
           <button
             onClick={() => setView('table')}
-            className={`px-2 py-0.5 text-xs rounded ${view === 'table' ? 'bg-gray-200 text-gray-800' : 'text-gray-500 hover:bg-gray-100'}`}
+            className={`px-2 py-0.5 text-xs rounded ${view === 'table' ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
             data-testid="view-table"
           >
             Table
           </button>
           <button
             onClick={() => setView('chart')}
-            className={`px-2 py-0.5 text-xs rounded ${view === 'chart' ? 'bg-gray-200 text-gray-800' : 'text-gray-500 hover:bg-gray-100'}`}
+            className={`px-2 py-0.5 text-xs rounded ${view === 'chart' ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
             data-testid="view-chart"
           >
             Chart
@@ -55,14 +55,14 @@ export function QueryResults({ result }: { result: QueryResult }) {
         <div className="ml-auto flex gap-1">
           <button
             onClick={() => handleExportResults('csv')}
-            className="px-2 py-0.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded"
+            className="px-2 py-0.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-600 rounded"
             data-testid="export-results-csv"
           >
             Export CSV
           </button>
           <button
             onClick={() => handleExportResults('json')}
-            className="px-2 py-0.5 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded"
+            className="px-2 py-0.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-600 rounded"
             data-testid="export-results-json"
           >
             Export JSON
@@ -89,12 +89,12 @@ export function QueryResults({ result }: { result: QueryResult }) {
           />
         </>
       ) : (
-        <div className="overflow-x-auto border border-gray-200 rounded">
+        <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-50">
+              <tr className="bg-gray-50 dark:bg-gray-800">
                 {result.columns.map((col) => (
-                  <th key={col} className="px-3 py-1.5 text-left font-medium text-gray-600 border-b border-gray-200">
+                  <th key={col} className="px-3 py-1.5 text-left font-medium text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
                     {col}
                   </th>
                 ))}
@@ -102,9 +102,9 @@ export function QueryResults({ result }: { result: QueryResult }) {
             </thead>
             <tbody>
               {result.rows.map((row, i) => (
-                <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr key={i} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   {result.columns.map((col) => (
-                    <td key={col} className="px-3 py-1.5 text-gray-700">
+                    <td key={col} className="px-3 py-1.5 text-gray-700 dark:text-gray-200">
                       {String(row[col] ?? '')}
                     </td>
                   ))}

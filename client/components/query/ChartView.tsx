@@ -1,5 +1,6 @@
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { QueryResult } from '@shared/types';
+import { useTheme } from '../../hooks/useTheme';
 
 export type ChartType = 'bar' | 'line' | 'pie';
 
@@ -13,9 +14,12 @@ interface ChartViewProps {
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
 export function ChartView({ result, chartType, xColumn, yColumns }: ChartViewProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
   if (!result.rows.length || !xColumn || yColumns.length === 0) {
     return (
-      <div className="flex items-center justify-center h-48 text-gray-400 text-sm">
+      <div className="flex items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-sm">
         No data to chart. Select X and Y columns.
       </div>
     );
@@ -28,6 +32,12 @@ export function ChartView({ result, chartType, xColumn, yColumns }: ChartViewPro
     }
     return item;
   });
+
+  const axisTickStyle = { fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 12 };
+  const gridStroke = isDark ? '#374151' : '#e5e7eb';
+  const tooltipStyle = isDark
+    ? { backgroundColor: '#1f2937', border: '1px solid #374151', color: '#f3f4f6' }
+    : undefined;
 
   if (chartType === 'pie') {
     const pieData = data.map((d, i) => ({
@@ -45,7 +55,7 @@ export function ChartView({ result, chartType, xColumn, yColumns }: ChartViewPro
                 <Cell key={i} fill={COLORS[i % COLORS.length]} />
               ))}
             </Pie>
-            <Tooltip />
+            <Tooltip contentStyle={tooltipStyle} />
             <Legend />
           </PieChart>
         </ResponsiveContainer>
@@ -60,10 +70,10 @@ export function ChartView({ result, chartType, xColumn, yColumns }: ChartViewPro
     <div data-testid="chart-view">
       <ResponsiveContainer width="100%" height={300}>
         <ChartComponent data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey={xColumn} tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
+          <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+          <XAxis dataKey={xColumn} tick={axisTickStyle} />
+          <YAxis tick={axisTickStyle} />
+          <Tooltip contentStyle={tooltipStyle} />
           <Legend />
           {yColumns.map((yCol, i) => (
             <DataComponent

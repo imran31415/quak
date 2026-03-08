@@ -82,48 +82,48 @@ export function CreateSheetDialog({ onClose, initialName }: CreateSheetDialogPro
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" data-testid="create-sheet-dialog">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800">Create New Sheet</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Create New Sheet</h2>
         </div>
         <div className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Sheet Name</label>
+            <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">Sheet Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               autoFocus
               data-testid="dialog-sheet-name"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-2">Template</label>
+            <label className="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Template</label>
             <div className="grid grid-cols-2 gap-2">
               {Object.entries(TEMPLATES).map(([key, tmpl]) => (
                 <button
                   key={key}
                   onClick={() => setTemplate(key)}
                   className={`px-3 py-2 text-sm rounded-md border ${
-                    template === key ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'
+                    template === key ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
                   }`}
                   data-testid={`template-${key}`}
                 >
                   {tmpl.label}
-                  <span className="block text-xs text-gray-400">{tmpl.columns.length} columns</span>
+                  <span className="block text-xs text-gray-400 dark:text-gray-500">{tmpl.columns.length} columns</span>
                 </button>
               ))}
               <button
                 onClick={() => setTemplate('custom')}
                 className={`px-3 py-2 text-sm rounded-md border ${
-                  template === 'custom' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:bg-gray-50'
+                  template === 'custom' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
                 }`}
                 data-testid="template-custom"
               >
                 Custom
-                <span className="block text-xs text-gray-400">Define columns</span>
+                <span className="block text-xs text-gray-400 dark:text-gray-500">Define columns</span>
               </button>
             </div>
           </div>
@@ -140,7 +140,7 @@ export function CreateSheetDialog({ onClose, initialName }: CreateSheetDialogPro
                       updated[i] = { ...updated[i], name: e.target.value };
                       setCustomColumns(updated);
                     }}
-                    className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded"
+                    className="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     placeholder="Column name"
                   />
                   <select
@@ -150,27 +150,27 @@ export function CreateSheetDialog({ onClose, initialName }: CreateSheetDialogPro
                       updated[i] = { ...updated[i], cellType: e.target.value as CellType };
                       setCustomColumns(updated);
                     }}
-                    className="px-2 py-1.5 text-sm border border-gray-300 rounded"
+                    className="px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   >
                     {CELL_TYPES.map((t) => (
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
                   {customColumns.length > 1 && (
-                    <button onClick={() => removeCustomColumn(i)} className="text-red-400 hover:text-red-600 text-lg">&times;</button>
+                    <button onClick={() => removeCustomColumn(i)} className="text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400 text-lg">&times;</button>
                   )}
                 </div>
               ))}
-              <button onClick={addCustomColumn} className="text-sm text-blue-600 hover:text-blue-700">+ Add Column</button>
+              <button onClick={addCustomColumn} className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">+ Add Column</button>
             </div>
           )}
         </div>
-        <div className="p-4 border-t border-gray-200 flex gap-2 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md">Cancel</button>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2 justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
           <button
             onClick={handleCreate}
             disabled={creating || !name.trim()}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 text-sm bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50"
             data-testid="dialog-create-btn"
           >
             {creating ? 'Creating...' : 'Create'}

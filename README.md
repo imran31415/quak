@@ -16,8 +16,9 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 - **Undo & redo** — full action stack (50 levels) for cell edits, row ops, and column changes
 - **Query history** — automatic history with pinned/saved queries
 - **Sheet templates** — Task Tracker, Budget, and custom templates to start fast
+- **Dark mode** — three-state theme toggle (light/dark/system) with smooth transitions, FOUC prevention, and AG Grid theme switching
 - **Keyboard shortcuts** — Ctrl+Z/Y, Ctrl+F, Ctrl+Enter, and more
-- **Responsive** — mobile-friendly layout with bottom navigation and slide-over sidebar
+- **Responsive** — mobile-friendly layout with bottom navigation, AI button, and slide-over sidebar
 
 <details>
 <summary>View Screenshots</summary>
@@ -42,9 +43,16 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 
 ![AI Chat](screenshots/ai-chat.png)
 
+### Dark Mode
+
+![Grid Dark](screenshots/grid-view-dark.png)
+
+![Kanban Dark](screenshots/kanban-view-dark.png)
+
 ### Mobile
 
-<img src="screenshots/mobile.png" alt="Mobile" width="320" />
+<img src="screenshots/mobile.png" alt="Mobile Light" width="320" />
+<img src="screenshots/mobile-dark.png" alt="Mobile Dark" width="320" />
 
 </details>
 
@@ -95,6 +103,7 @@ Then open http://localhost:5173 to browse the docs, including:
 - [Import & Export](docs/features/import-export.md) — file formats and type inference
 - [Search & Filtering](docs/features/search-filtering.md) — search, filters, and sorting
 - [AI Chat Assistant](docs/features/ai-chat.md) — natural-language data management with tool calling
+- [Dark Mode](docs/features/dark-mode.md) — light, dark, and system theme with smooth transitions
 - [Architecture](docs/architecture.md) — dual-DuckDB architecture and data flow
 
 ## Project Structure
@@ -137,7 +146,7 @@ quak/
 ```bash
 make test           # All tests (unit + E2E)
 make test-unit      # Unit tests only (Vitest, 9 files)
-make test-e2e       # E2E tests only (Playwright, 14 files)
+make test-e2e       # E2E tests only (Playwright, 15 files)
 make test-file F=query  # Single E2E test file
 make check          # Quick: typecheck + unit
 make verify         # Full: typecheck + unit + E2E

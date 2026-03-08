@@ -34,7 +34,7 @@ export function RowActions(props: ICellRendererParams) {
       />
       <button
         onClick={handleDelete}
-        className="p-0.5 text-gray-300 hover:text-red-500"
+        className="p-0.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400"
         title="Delete row"
         aria-label={`Delete row ${rowIndex + 1}`}
         data-testid={`row-delete-${rowIndex}`}

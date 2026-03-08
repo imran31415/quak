@@ -43,14 +43,14 @@ export function GridToolbar({ onSearchToggle, searchOpen }: GridToolbarProps) {
   };
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200" data-testid="grid-toolbar">
-      <span className="text-sm font-medium text-gray-700">{activeSheetMeta.name}</span>
+    <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700" data-testid="grid-toolbar">
+      <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{activeSheetMeta.name}</span>
       <div className="ml-auto flex gap-2 items-center">
         {/* Undo/Redo */}
         <button
           onClick={() => undo()}
           disabled={past.length === 0}
-          className="p-1 text-gray-500 hover:text-gray-700 disabled:text-gray-300"
+          className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:text-gray-300 dark:disabled:text-gray-600"
           title="Undo (Ctrl+Z)"
           aria-label="Undo"
           data-testid="undo-btn"
@@ -62,7 +62,7 @@ export function GridToolbar({ onSearchToggle, searchOpen }: GridToolbarProps) {
         <button
           onClick={() => redo()}
           disabled={future.length === 0}
-          className="p-1 text-gray-500 hover:text-gray-700 disabled:text-gray-300"
+          className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 disabled:text-gray-300 dark:disabled:text-gray-600"
           title="Redo (Ctrl+Y)"
           aria-label="Redo"
           data-testid="redo-btn"
@@ -72,12 +72,12 @@ export function GridToolbar({ onSearchToggle, searchOpen }: GridToolbarProps) {
           </svg>
         </button>
 
-        <div className="w-px h-5 bg-gray-200" />
+        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
 
         {/* Search */}
         <button
           onClick={onSearchToggle}
-          className={`p-1 rounded ${searchOpen ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`p-1 rounded ${searchOpen ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
           title="Search (Ctrl+F)"
           aria-label="Toggle search"
           data-testid="search-toggle"
@@ -87,7 +87,7 @@ export function GridToolbar({ onSearchToggle, searchOpen }: GridToolbarProps) {
           </svg>
         </button>
 
-        <div className="w-px h-5 bg-gray-200" />
+        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
 
         {/* Bulk delete */}
         {selectedCount > 0 && (
@@ -104,16 +104,16 @@ export function GridToolbar({ onSearchToggle, searchOpen }: GridToolbarProps) {
         <div className="relative" ref={exportRef}>
           <button
             onClick={() => setExportOpen(!exportOpen)}
-            className="px-3 py-1 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+            className="px-3 py-1 text-sm text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700"
             aria-label="Export"
             data-testid="export-btn"
           >
             Export
           </button>
           {exportOpen && (
-            <div className="absolute right-0 top-full mt-1 w-32 bg-white border rounded-md shadow-lg z-20" role="menu">
-              <button onClick={() => handleExport('csv')} className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50" role="menuitem" data-testid="export-csv">CSV</button>
-              <button onClick={() => handleExport('json')} className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50" role="menuitem" data-testid="export-json">JSON</button>
+            <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-20" role="menu">
+              <button onClick={() => handleExport('csv')} className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200" role="menuitem" data-testid="export-csv">CSV</button>
+              <button onClick={() => handleExport('json')} className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200" role="menuitem" data-testid="export-json">JSON</button>
             </div>
           )}
         </div>

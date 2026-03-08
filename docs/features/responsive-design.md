@@ -18,7 +18,8 @@ On smaller screens, the layout shifts to:
 
 - **Header** with hamburger menu
 - **Full-width grid** — all available screen space for your data
-- **Bottom navigation bar** — switch between Sheets and SQL views
+- **Bottom navigation bar** — switch between Sheets, SQL, AI, and Theme
+- **Full-screen chat panel** — AI chat overlays full screen on mobile
 - **Slide-over sidebar** — opens on top of the grid when needed
 
 <div style="max-width: 320px;">

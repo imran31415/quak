@@ -26,7 +26,7 @@ export function GalleryView() {
 
   if (!activeSheetMeta || !activeSheetId) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400">
+      <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500">
         Select a sheet to view
       </div>
     );
@@ -34,7 +34,7 @@ export function GalleryView() {
 
   if (rows.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400" data-testid="gallery-empty">
+      <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500" data-testid="gallery-empty">
         No rows to display. Add rows in Grid view.
       </div>
     );
@@ -48,17 +48,17 @@ export function GalleryView() {
           return (
             <div
               key={row.rowid as number ?? idx}
-              className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
               data-testid="gallery-card"
             >
-              <h3 className="font-medium text-gray-900 mb-2 truncate" data-testid="gallery-card-title">
-                {title || <span className="text-gray-300 italic">Untitled</span>}
+              <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2 truncate" data-testid="gallery-card-title">
+                {title || <span className="text-gray-300 dark:text-gray-600 italic">Untitled</span>}
               </h3>
               <div className="space-y-1.5">
                 {displayColumns.map((col) => (
                   <div key={col.id} className="flex items-start gap-2 text-sm">
-                    <span className="text-gray-400 shrink-0 w-20 truncate">{col.name}</span>
-                    <span className="text-gray-700 truncate">
+                    <span className="text-gray-400 dark:text-gray-500 shrink-0 w-20 truncate">{col.name}</span>
+                    <span className="text-gray-700 dark:text-gray-200 truncate">
                       {formatCellValue(row[col.name], col.cellType)}
                     </span>
                   </div>

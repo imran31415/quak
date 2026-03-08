@@ -7,7 +7,7 @@ export function FormulaCell(props: ICellRendererParams) {
   return (
     <div className="relative group" data-testid="formula-cell">
       <span>{displayValue}</span>
-      <span className="absolute top-0 right-0 hidden group-hover:inline-block text-[10px] bg-purple-100 text-purple-700 px-1 rounded-bl">
+      <span className="absolute top-0 right-0 hidden group-hover:inline-block text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-1 rounded-bl">
         fx
       </span>
     </div>

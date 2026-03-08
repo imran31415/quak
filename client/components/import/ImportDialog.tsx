@@ -73,21 +73,21 @@ export function ImportDialog({ onClose, initialFile }: ImportDialogProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" data-testid="import-dialog">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-800">Import File</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">&times;</button>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Import File</h2>
+          <button onClick={onClose} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">&times;</button>
         </div>
         <div className="p-4">
           {!preview ? (
             <div
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors"
+              className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               data-testid="import-dropzone"
             >
-              <p className="text-gray-500 mb-3">Drag & drop a CSV or JSON file here</p>
-              <label className="inline-block px-4 py-2 bg-blue-600 text-white text-sm rounded cursor-pointer hover:bg-blue-700">
+              <p className="text-gray-500 dark:text-gray-400 mb-3">Drag & drop a CSV or JSON file here</p>
+              <label className="inline-block px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white text-sm rounded cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-600">
                 Choose File
                 <input
                   type="file"
@@ -100,44 +100,44 @@ export function ImportDialog({ onClose, initialFile }: ImportDialogProps) {
             </div>
           ) : (
             <div>
-              <p className="text-sm text-gray-600 mb-2">
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
                 File: <strong>{file?.name}</strong> · {preview.columns.length} columns detected
               </p>
-              <div className="overflow-x-auto border border-gray-200 rounded mb-3 max-h-48">
+              <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded mb-3 max-h-48">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="bg-gray-50">
+                    <tr className="bg-gray-50 dark:bg-gray-800">
                       {preview.columns.map((col) => (
-                        <th key={col.id} className="px-2 py-1 text-left font-medium text-gray-600 border-b">
+                        <th key={col.id} className="px-2 py-1 text-left font-medium text-gray-600 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
                           {col.name}
-                          <span className="ml-1 text-gray-400">({col.cellType})</span>
+                          <span className="ml-1 text-gray-400 dark:text-gray-500">({col.cellType})</span>
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {preview.rows.map((row, i) => (
-                      <tr key={i} className="border-b border-gray-100">
+                      <tr key={i} className="border-b border-gray-100 dark:border-gray-700">
                         {preview.columns.map((col) => (
-                          <td key={col.id} className="px-2 py-1 text-gray-700">{String(row[col.name] ?? '')}</td>
+                          <td key={col.id} className="px-2 py-1 text-gray-700 dark:text-gray-200">{String(row[col.name] ?? '')}</td>
                         ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-gray-400">Showing first {preview.rows.length} rows</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500">Showing first {preview.rows.length} rows</p>
             </div>
           )}
-          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
         </div>
-        <div className="p-4 border-t border-gray-200 flex gap-2 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-md">Cancel</button>
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2 justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">Cancel</button>
           {preview && (
             <button
               onClick={handleImport}
               disabled={importing}
-              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50"
               data-testid="import-submit"
             >
               {importing ? 'Importing...' : 'Import'}

@@ -16,6 +16,7 @@ Quak combines a traditional spreadsheet grid with SQL-powered data capabilities.
 | [Undo & Redo](/features/undo-redo) | 50-action stack covering cell edits, rows, and columns |
 | [Sheet Management](/features/sheet-management) | Multiple sheets, templates, column management |
 | [Keyboard Shortcuts](/features/keyboard-shortcuts) | Quick access to all major operations |
+| [Dark Mode](/features/dark-mode) | Light, dark, and system theme with smooth transitions |
 | [Responsive Design](/features/responsive-design) | Mobile-first layout with bottom navigation |
 
 ## Screenshots

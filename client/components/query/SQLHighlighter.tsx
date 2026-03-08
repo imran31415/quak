@@ -31,7 +31,7 @@ function highlightSQL(sql: string): string {
         else j++;
       }
       if (j < sql.length) j++; // closing quote
-      tokens.push(`<span class="text-green-600">${escapeHtml(sql.slice(i, j))}</span>`);
+      tokens.push(`<span class="text-green-600 dark:text-green-400">${escapeHtml(sql.slice(i, j))}</span>`);
       i = j;
       continue;
     }
@@ -40,7 +40,7 @@ function highlightSQL(sql: string): string {
     if (/\d/.test(sql[i]) && (i === 0 || /[\s,()=<>!+\-*/]/.test(sql[i - 1]))) {
       let j = i;
       while (j < sql.length && /[\d.]/.test(sql[j])) j++;
-      tokens.push(`<span class="text-orange-500">${escapeHtml(sql.slice(i, j))}</span>`);
+      tokens.push(`<span class="text-orange-500 dark:text-orange-400">${escapeHtml(sql.slice(i, j))}</span>`);
       i = j;
       continue;
     }
@@ -51,7 +51,7 @@ function highlightSQL(sql: string): string {
       while (j < sql.length && /[a-zA-Z0-9_]/.test(sql[j])) j++;
       const word = sql.slice(i, j);
       if (SQL_KEYWORDS.has(word.toUpperCase())) {
-        tokens.push(`<span class="text-blue-600 font-bold">${escapeHtml(word)}</span>`);
+        tokens.push(`<span class="text-blue-600 dark:text-blue-400 font-bold">${escapeHtml(word)}</span>`);
       } else {
         tokens.push(escapeHtml(word));
       }
@@ -89,7 +89,7 @@ export function SQLHighlighter({ value, onChange, onKeyDown }: SQLHighlighterPro
     <div className="relative w-full h-20">
       <pre
         ref={preRef}
-        className="absolute inset-0 px-3 py-2 text-sm font-mono overflow-auto whitespace-pre-wrap break-words pointer-events-none border border-gray-300 rounded bg-white"
+        className="absolute inset-0 px-3 py-2 text-sm font-mono overflow-auto whitespace-pre-wrap break-words pointer-events-none border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
         aria-hidden="true"
         dangerouslySetInnerHTML={{ __html: highlightSQL(value) + '\n' }}
       />
@@ -99,7 +99,7 @@ export function SQLHighlighter({ value, onChange, onKeyDown }: SQLHighlighterPro
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
         onScroll={handleScroll}
-        className="absolute inset-0 w-full h-full px-3 py-2 text-sm font-mono border border-gray-300 rounded resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 bg-transparent text-transparent caret-black"
+        className="absolute inset-0 w-full h-full px-3 py-2 text-sm font-mono border border-gray-300 dark:border-gray-600 rounded resize-none focus:outline-none focus:ring-1 focus:ring-blue-500 bg-transparent text-transparent caret-black dark:caret-white"
         placeholder="Enter SQL query..."
         spellCheck={false}
         data-testid="query-input"

@@ -18,6 +18,7 @@ const MODELS = [
 export function ChatPanel() {
   const chatPanelOpen = useUIStore((s) => s.chatPanelOpen);
   const setChatPanelOpen = useUIStore((s) => s.setChatPanelOpen);
+  const isMobile = useUIStore((s) => s.isMobile);
 
   const messages = useChatStore((s) => s.messages);
   const streaming = useChatStore((s) => s.streaming);
@@ -143,16 +144,20 @@ export function ChatPanel() {
 
   return (
     <div
-      className="w-96 border-l border-gray-200 bg-white flex flex-col shrink-0"
+      className={`${
+        isMobile
+          ? 'fixed inset-0 z-50'
+          : 'w-96 border-l border-gray-200 dark:border-gray-700'
+      } bg-white dark:bg-gray-800 flex flex-col shrink-0`}
       data-testid="chat-panel"
     >
       {/* Header */}
-      <div className="h-12 border-b border-gray-200 flex items-center px-3 gap-2 shrink-0">
-        <span className="font-semibold text-sm text-gray-800">AI Assistant</span>
+      <div className="h-12 border-b border-gray-200 dark:border-gray-700 flex items-center px-3 gap-2 shrink-0">
+        <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">AI Assistant</span>
         <select
           value={model}
           onChange={(e) => setModel(e.target.value)}
-          className="ml-auto text-xs border border-gray-300 rounded px-1 py-0.5 bg-white"
+          className="ml-auto text-xs border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           data-testid="model-selector"
         >
           {MODELS.map((m) => (
@@ -163,7 +168,7 @@ export function ChatPanel() {
         </select>
         <button
           onClick={clearMessages}
-          className="text-xs text-gray-500 hover:text-gray-700 px-1"
+          className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-1"
           title="Clear messages"
           data-testid="clear-chat"
         >
@@ -171,7 +176,7 @@ export function ChatPanel() {
         </button>
         <button
           onClick={() => setChatPanelOpen(false)}
-          className="text-gray-400 hover:text-gray-600 p-0.5"
+          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-0.5"
           aria-label="Close chat panel"
           data-testid="close-chat"
         >
@@ -183,7 +188,7 @@ export function ChatPanel() {
 
       {/* API Key Banner */}
       {!apiKey && (
-        <div className="px-3 py-2 bg-yellow-50 border-b border-yellow-200" data-testid="api-key-banner">
+        <div className="px-3 py-2 bg-yellow-50 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-700" data-testid="api-key-banner">
           {showApiKeyInput ? (
             <div className="flex gap-1">
               <input
@@ -192,13 +197,13 @@ export function ChatPanel() {
                 onChange={(e) => setApiKeyDraft(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && saveApiKey()}
                 placeholder="sk-or-..."
-                className="flex-1 text-xs border border-gray-300 rounded px-2 py-1"
+                className="flex-1 text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 data-testid="api-key-input"
                 autoFocus
               />
               <button
                 onClick={saveApiKey}
-                className="text-xs bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700"
+                className="text-xs bg-purple-600 dark:bg-purple-500 text-white px-2 py-1 rounded hover:bg-purple-700 dark:hover:bg-purple-600"
                 data-testid="save-api-key"
               >
                 Save
@@ -207,7 +212,7 @@ export function ChatPanel() {
           ) : (
             <button
               onClick={() => setShowApiKeyInput(true)}
-              className="text-xs text-yellow-800 hover:text-yellow-900 underline"
+              className="text-xs text-yellow-800 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-200 underline"
               data-testid="set-api-key-btn"
             >
               Set OpenRouter API key to use AI
@@ -219,7 +224,7 @@ export function ChatPanel() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3" data-testid="chat-messages">
         {messages.length === 0 && (
-          <div className="text-center text-sm text-gray-400 mt-8">
+          <div className="text-center text-sm text-gray-400 dark:text-gray-500 mt-8">
             Ask me to manage your spreadsheets!
           </div>
         )}
@@ -228,7 +233,7 @@ export function ChatPanel() {
             {msg.role === 'user' && (
               <div className="flex justify-end">
                 <div
-                  className="bg-blue-100 text-gray-800 rounded-lg px-3 py-2 max-w-[85%] text-sm whitespace-pre-wrap"
+                  className="bg-blue-100 dark:bg-blue-900/40 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 max-w-[85%] text-sm whitespace-pre-wrap"
                   data-testid="user-message"
                 >
                   {msg.content}
@@ -253,12 +258,12 @@ export function ChatPanel() {
                   })}
                   {/* Text content */}
                   {msg.content && (
-                    <div className="prose prose-sm max-w-none">
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
                   )}
                   {streaming && msg.id === messages[messages.length - 1]?.id && !msg.content && !msg.toolCalls?.length && (
-                    <span className="inline-block w-2 h-4 bg-gray-400 animate-pulse" />
+                    <span className="inline-block w-2 h-4 bg-gray-400 dark:bg-gray-500 animate-pulse" />
                   )}
                 </div>
               </div>
@@ -269,7 +274,7 @@ export function ChatPanel() {
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-200 p-3" data-testid="chat-input-area">
+      <div className="border-t border-gray-200 dark:border-gray-700 p-3" data-testid="chat-input-area">
         <div className="flex gap-2">
           <textarea
             ref={textareaRef}
@@ -278,7 +283,7 @@ export function ChatPanel() {
             onKeyDown={handleKeyDown}
             placeholder="Ask about your data..."
             rows={1}
-            className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="flex-1 resize-none border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
             disabled={streaming}
             data-testid="chat-input"
           />
@@ -294,7 +299,7 @@ export function ChatPanel() {
             <button
               onClick={handleSend}
               disabled={!input.trim()}
-              className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm shrink-0"
+              className="px-3 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm shrink-0"
               data-testid="send-btn"
             >
               Send

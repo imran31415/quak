@@ -20,14 +20,14 @@ export function ShortcutPalette({ onClose }: ShortcutPaletteProps) {
       data-testid="shortcut-palette"
     >
       <div
-        className="bg-white rounded-lg shadow-xl w-96 max-w-[90vw] overflow-hidden"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-96 max-w-[90vw] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <h2 className="text-sm font-semibold text-gray-700">Keyboard Shortcuts</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Keyboard Shortcuts</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
             aria-label="Close shortcuts"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,8 +38,8 @@ export function ShortcutPalette({ onClose }: ShortcutPaletteProps) {
         <div className="p-4">
           {shortcuts.map((s) => (
             <div key={s.keys} className="flex items-center justify-between py-1.5">
-              <span className="text-sm text-gray-600">{s.description}</span>
-              <kbd className="px-2 py-0.5 text-xs font-mono bg-gray-100 border border-gray-300 rounded text-gray-700">
+              <span className="text-sm text-gray-600 dark:text-gray-300">{s.description}</span>
+              <kbd className="px-2 py-0.5 text-xs font-mono bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-200">
                 {s.keys}
               </kbd>
             </div>

@@ -1,7 +1,17 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 html, body, #root {
   height: 100%;
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+* {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }

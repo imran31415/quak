@@ -59,7 +59,7 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType }: ColumnHeade
     <div className="relative inline-block" ref={menuRef}>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-        className="ml-1 p-0.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600"
+        className="ml-1 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
         aria-label={`Menu for ${columnName}`}
         data-testid={`col-menu-${columnId}`}
       >
@@ -69,7 +69,7 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType }: ColumnHeade
       </button>
 
       {open && (
-        <div className="absolute top-full right-0 mt-1 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50" data-testid="col-menu-dropdown">
+        <div className="absolute top-full right-0 mt-1 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 z-50" data-testid="col-menu-dropdown">
           {renaming ? (
             <div className="p-2">
               <input
@@ -77,13 +77,13 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType }: ColumnHeade
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleRename()}
-                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 autoFocus
                 data-testid="rename-col-input"
               />
               <div className="flex gap-1 mt-1">
                 <button onClick={handleRename} className="flex-1 px-2 py-1 text-xs bg-blue-600 text-white rounded">Save</button>
-                <button onClick={() => { setRenaming(false); setNewName(columnName); }} className="flex-1 px-2 py-1 text-xs bg-gray-200 rounded">Cancel</button>
+                <button onClick={() => { setRenaming(false); setNewName(columnName); }} className="flex-1 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-200">Cancel</button>
               </div>
             </div>
           ) : changingType ? (
@@ -92,7 +92,7 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType }: ColumnHeade
                 <button
                   key={type}
                   onClick={() => handleChangeType(type)}
-                  className={`w-full text-left px-3 py-1.5 text-sm rounded ${type === cellType ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50'}`}
+                  className={`w-full text-left px-3 py-1.5 text-sm rounded ${type === cellType ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'}`}
                 >
                   {type}
                 </button>
@@ -102,22 +102,22 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType }: ColumnHeade
             <div className="py-1">
               <button
                 onClick={() => setRenaming(true)}
-                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50"
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
                 data-testid="rename-col-btn"
               >
                 Rename
               </button>
               <button
                 onClick={() => setChangingType(true)}
-                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50"
+                className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
                 data-testid="change-type-btn"
               >
                 Change Type
               </button>
-              <hr className="my-1 border-gray-100" />
+              <hr className="my-1 border-gray-100 dark:border-gray-700" />
               <button
                 onClick={handleDelete}
-                className="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                className="w-full text-left px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"
                 data-testid="delete-col-btn"
               >
                 Delete Column

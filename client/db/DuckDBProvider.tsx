@@ -15,11 +15,11 @@ export function DuckDBProvider({ children }: { children: ReactNode }) {
   }, []);
 
   if (error) {
-    return <div className="p-4 text-red-600">DuckDB init failed: {error}</div>;
+    return <div className="p-4 text-red-600 dark:text-red-400">DuckDB init failed: {error}</div>;
   }
 
   if (!db) {
-    return <div className="p-4 text-gray-500">Loading DuckDB...</div>;
+    return <div className="p-4 text-gray-500 dark:text-gray-400">Loading DuckDB...</div>;
   }
 
   return <DuckDBContext.Provider value={db}>{children}</DuckDBContext.Provider>;

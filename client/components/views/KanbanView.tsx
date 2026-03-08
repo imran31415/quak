@@ -100,7 +100,7 @@ export function KanbanView() {
 
   if (!activeSheetMeta || !activeSheetId) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400">
+      <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500">
         Select a sheet to view
       </div>
     );
@@ -108,7 +108,7 @@ export function KanbanView() {
 
   if (!kanbanColumn) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400" data-testid="kanban-no-column">
+      <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500" data-testid="kanban-no-column">
         <div className="text-center">
           <p>No dropdown column found.</p>
           <p className="text-sm mt-1">Add a dropdown column in Grid view, or configure the Kanban column in view settings.</p>
@@ -131,8 +131,8 @@ export function KanbanView() {
             key={laneName}
             className={`${
               isMobile ? 'mb-4' : 'flex-shrink-0 w-72'
-            } bg-gray-50 rounded-lg p-3 ${
-              dragOverLane === laneName ? 'ring-2 ring-blue-400 bg-blue-50' : ''
+            } bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 ${
+              dragOverLane === laneName ? 'ring-2 ring-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''
             }`}
             onDragOver={(e) => handleDragOver(e, laneName)}
             onDragLeave={handleDragLeave}
@@ -140,8 +140,8 @@ export function KanbanView() {
             data-testid={`kanban-lane-${laneName}`}
           >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700">{displayName}</h3>
-              <span className="text-xs text-gray-400 bg-gray-200 rounded-full px-2 py-0.5">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">{displayName}</h3>
+              <span className="text-xs text-gray-400 dark:text-gray-500 bg-gray-200 dark:bg-gray-700 rounded-full px-2 py-0.5">
                 {cards.length}
               </span>
             </div>
@@ -190,22 +190,22 @@ function KanbanCardComponent({
 
   return (
     <div
-      className="bg-white border border-gray-200 rounded-md p-3 cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow"
+      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-3 cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow"
       draggable={!isMobile}
       onDragStart={(e) => onDragStart(e, card.rowIndex, laneName)}
       data-testid="kanban-card"
     >
-      <p className="text-sm font-medium text-gray-800 truncate" data-testid="kanban-card-title">
-        {title || <span className="text-gray-300 italic">Untitled</span>}
+      <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate" data-testid="kanban-card-title">
+        {title || <span className="text-gray-300 dark:text-gray-600 italic">Untitled</span>}
       </p>
       {previewColumns.map((col) => (
-        <p key={col.id} className="text-xs text-gray-500 mt-1 truncate">
+        <p key={col.id} className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
           {col.name}: {formatPreview(card.row[col.name], col.cellType)}
         </p>
       ))}
       {isMobile && (
         <select
-          className="mt-2 w-full text-xs border border-gray-200 rounded px-1.5 py-1"
+          className="mt-2 w-full text-xs border border-gray-200 dark:border-gray-600 rounded px-1.5 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           value={laneName}
           onChange={(e) => onMoveCard(card.rowIndex, e.target.value)}
           data-testid="kanban-move-select"

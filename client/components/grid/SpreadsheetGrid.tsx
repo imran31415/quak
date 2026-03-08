@@ -4,6 +4,8 @@ import {
   AllCommunityModule,
   ModuleRegistry,
   themeAlpine,
+  colorSchemeDark,
+  colorSchemeLight,
   type ColDef,
   type CellValueChangedEvent,
   type FilterChangedEvent,
@@ -13,6 +15,7 @@ import { useSheetData } from '../../hooks/useSheetData';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
 import { useUndoStore } from '../../store/undoStore';
 import { useSheetStore } from '../../store/sheetStore';
+import { useTheme } from '../../hooks/useTheme';
 import { renderers } from '../cells/CellRouter';
 import { GridToolbar } from './GridToolbar';
 import { StatusBar } from './StatusBar';
@@ -123,6 +126,7 @@ function getColDefs(columns: ColumnConfig[]): ColDef[] {
 export function SpreadsheetGrid() {
   const { meta, rows, updateCell } = useSheetData();
   const { activeSheetId } = useSheetStore();
+  const { resolvedTheme } = useTheme();
   const gridRef = useRef<AgGridReact>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [addColumnOpen, setAddColumnOpen] = useState(false);
@@ -132,6 +136,13 @@ export function SpreadsheetGrid() {
   const undoPush = useUndoStore((s) => s.push);
 
   useUndoRedo();
+
+  const gridTheme = useMemo(
+    () => resolvedTheme === 'dark'
+      ? themeAlpine.withPart(colorSchemeDark)
+      : themeAlpine.withPart(colorSchemeLight),
+    [resolvedTheme]
+  );
 
   const columnDefs = useMemo(() => {
     if (!meta) return [];
@@ -242,7 +253,7 @@ export function SpreadsheetGrid() {
 
   if (!meta) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400" data-testid="no-sheet">
+      <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500" data-testid="no-sheet">
         <div className="text-center">
           <p className="text-lg mb-2">No sheet selected</p>
           <p className="text-sm">Create or select a sheet from the sidebar</p>
@@ -272,7 +283,7 @@ export function SpreadsheetGrid() {
       <div className="flex-1 relative" data-testid="ag-grid-container">
         <AgGridReact
           ref={gridRef}
-          theme={themeAlpine}
+          theme={gridTheme}
           rowData={rows}
           columnDefs={columnDefs}
           defaultColDef={{

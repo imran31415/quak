@@ -40,11 +40,11 @@ export function Sidebar() {
       <aside
         className={`${
           isMobile ? 'fixed inset-y-0 left-0 z-50' : 'relative'
-        } w-64 bg-gray-50 border-r border-gray-200 flex flex-col shrink-0`}
+        } w-64 bg-gray-50 dark:bg-gray-800/50 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0`}
         data-testid="sidebar"
       >
-        <div className="p-3 border-b border-gray-200">
-          <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">Sheets</h2>
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">Sheets</h2>
           <div className="flex gap-2">
             <input
               type="text"
@@ -52,13 +52,13 @@ export function Sidebar() {
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               placeholder="New sheet name..."
-              className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
               data-testid="new-sheet-input"
             />
             <button
               onClick={handleCreate}
               disabled={!newName.trim()}
-              className="px-2 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              className="px-2 py-1 text-sm bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50"
               aria-label="Create sheet"
               data-testid="create-sheet-btn"
             >
@@ -69,13 +69,13 @@ export function Sidebar() {
 
         <div className="flex-1 overflow-y-auto p-2" data-testid="sheet-list">
           {sheets.length === 0 && (
-            <p className="text-sm text-gray-400 p-2">No sheets yet</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 p-2">No sheets yet</p>
           )}
           {sheets.map((sheet) => (
             <div
               key={sheet.id}
               className={`flex items-center justify-between p-2 rounded cursor-pointer text-sm ${
-                activeSheetId === sheet.id ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100 text-gray-700'
+                activeSheetId === sheet.id ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
               }`}
             >
               <span
@@ -93,7 +93,7 @@ export function Sidebar() {
                   e.stopPropagation();
                   if (confirm(`Delete "${sheet.name}"?`)) deleteSheet(sheet.id);
                 }}
-                className="ml-2 text-gray-400 hover:text-red-500"
+                className="ml-2 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
                 aria-label={`Delete ${sheet.name}`}
                 data-testid={`delete-sheet-${sheet.id}`}
               >

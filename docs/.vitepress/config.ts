@@ -39,6 +39,7 @@ export default defineConfig({
           { text: 'Undo & Redo', link: '/features/undo-redo' },
           { text: 'Sheet Management', link: '/features/sheet-management' },
           { text: 'Keyboard Shortcuts', link: '/features/keyboard-shortcuts' },
+          { text: 'Dark Mode', link: '/features/dark-mode' },
           { text: 'Responsive Design', link: '/features/responsive-design' },
         ],
       },

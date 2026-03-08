@@ -69,8 +69,8 @@ export function ViewSwitcher({ sheetId }: ViewSwitcherProps) {
           onClick={() => setViewType(sheetId, type)}
           className={`flex items-center gap-1.5 px-2 py-1 text-sm rounded-md transition-colors ${
             currentView === type
-              ? 'text-blue-600 bg-blue-50'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
           }`}
           data-testid={`view-btn-${type}`}
           title={label}
@@ -82,7 +82,7 @@ export function ViewSwitcher({ sheetId }: ViewSwitcherProps) {
       {currentView !== 'grid' && (
         <button
           onClick={() => setViewConfigPopoverOpen(!viewConfigPopoverOpen)}
-          className="ml-1 p-1 text-gray-400 hover:text-gray-600 rounded"
+          className="ml-1 p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded"
           data-testid="view-config-btn"
           title="Configure view"
         >

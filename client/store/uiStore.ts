@@ -19,6 +19,7 @@ interface UIState {
   importDialogOpen: boolean;
   viewConfigs: Record<string, ViewConfig>;
   viewConfigPopoverOpen: boolean;
+  theme: 'light' | 'dark' | 'system';
 
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
@@ -32,6 +33,7 @@ interface UIState {
   setViewConfig: (sheetId: string, config: Partial<ViewConfig>) => void;
   getViewConfig: (sheetId: string) => ViewConfig;
   setViewConfigPopoverOpen: (open: boolean) => void;
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -45,6 +47,7 @@ export const useUIStore = create<UIState>()(
       importDialogOpen: false,
       viewConfigs: {},
       viewConfigPopoverOpen: false,
+      theme: 'system',
 
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -70,6 +73,7 @@ export const useUIStore = create<UIState>()(
         })),
       getViewConfig: (sheetId) => get().viewConfigs[sheetId] || {},
       setViewConfigPopoverOpen: (open) => set({ viewConfigPopoverOpen: open }),
+      setTheme: (theme) => set({ theme }),
     }),
     {
       name: 'quak-ui-store',
@@ -77,6 +81,7 @@ export const useUIStore = create<UIState>()(
         sidebarOpen: state.sidebarOpen,
         queryPanelOpen: state.queryPanelOpen,
         viewConfigs: state.viewConfigs,
+        theme: state.theme,
       }),
     }
   )

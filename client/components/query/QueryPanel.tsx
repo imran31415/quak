@@ -41,17 +41,17 @@ export function QueryPanel() {
       className={`${
         isMobile
           ? 'fixed inset-x-0 bottom-14 top-1/2 z-40'
-          : 'border-t border-gray-200'
-      } bg-white flex flex-col`}
+          : 'border-t border-gray-200 dark:border-gray-700'
+      } bg-white dark:bg-gray-800 flex flex-col`}
       data-testid="query-panel"
     >
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-200">
-        <span className="text-sm font-medium text-gray-700">SQL Query</span>
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">SQL Query</span>
         <QueryTemplates onInsert={handleInsertSQL} />
         <button
           onClick={handleRun}
           disabled={loading || !sql.trim()}
-          className="ml-auto px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          className="ml-auto px-3 py-1 text-sm bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50"
           data-testid="run-query-btn"
         >
           {loading ? 'Running...' : 'Run'}
@@ -75,7 +75,7 @@ export function QueryPanel() {
         </div>
       </div>
       {error && (
-        <div className="px-4 py-2 text-sm text-red-600" data-testid="query-error">
+        <div className="px-4 py-2 text-sm text-red-600 dark:text-red-400" data-testid="query-error">
           {error}
         </div>
       )}

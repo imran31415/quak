@@ -25,14 +25,14 @@ export function ViewConfigPopover({ sheetId, viewType }: ViewConfigPopoverProps)
 
   return (
     <div
-      className="absolute top-10 right-2 z-40 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-64"
+      className="absolute top-10 right-2 z-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 w-64"
       data-testid="view-config-popover"
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-gray-700">View Settings</span>
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">View Settings</span>
         <button
           onClick={() => setViewConfigPopoverOpen(false)}
-          className="text-gray-400 hover:text-gray-600"
+          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M4 4l8 8M12 4l-8 8" />
@@ -93,11 +93,11 @@ function ConfigSelect({
 }) {
   return (
     <div>
-      <label className="block text-xs text-gray-500 mb-1">{label}</label>
+      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
         data-testid={testId}
       >
         <option value="">{placeholder}</option>
@@ -108,7 +108,7 @@ function ConfigSelect({
         ))}
       </select>
       {columns.length === 0 && (
-        <p className="text-xs text-amber-600 mt-1">
+        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
           No compatible columns found. Add one in Grid view.
         </p>
       )}

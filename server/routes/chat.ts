@@ -27,13 +27,12 @@ async function handleMockChat(req: Request, res: Response) {
   // Simulate a delay
   await new Promise((r) => setTimeout(r, 100));
 
+  const context = (req.body as ChatRequest).context;
+  const sheetId = context?.activeSheetId || 'unknown';
+
   if (lastMsg.toLowerCase().includes('add') && lastMsg.toLowerCase().includes('row')) {
     // Mock: tool call to add rows
     const toolCallId = 'mock_tc_1';
-
-    // Find active sheet from context
-    const context = (req.body as ChatRequest).context;
-    const sheetId = context?.activeSheetId || 'unknown';
 
     sendSSE(res, 'tool_call_start', { id: toolCallId, name: 'add_rows' });
 
@@ -59,6 +58,50 @@ async function handleMockChat(req: Request, res: Response) {
 
     // Send follow-up text
     const text = "I've added 2 sample rows to your sheet.";
+    for (const char of text) {
+      sendSSE(res, 'text_delta', { content: char });
+    }
+  } else if (lastMsg.toLowerCase().includes('summarize') || lastMsg.toLowerCase().includes('summary')) {
+    // Mock: tool call to summarize_data
+    const toolCallId = 'mock_tc_summarize';
+
+    sendSSE(res, 'tool_call_start', { id: toolCallId, name: 'summarize_data' });
+
+    const result = await executeTool('summarize_data', { sheetId });
+    const toolResult: ToolResult = {
+      toolCallId,
+      name: 'summarize_data',
+      result: result.data,
+      error: result.error,
+    };
+
+    sendSSE(res, 'tool_result', toolResult);
+
+    const text = "Here's a summary of your data.";
+    for (const char of text) {
+      sendSSE(res, 'text_delta', { content: char });
+    }
+  } else if (lastMsg.toLowerCase().includes('sort')) {
+    // Mock: tool call to sort_sheet
+    const toolCallId = 'mock_tc_sort';
+
+    // Find the first column name from context
+    const firstCol = context?.activeSheetMeta?.columns[0]?.name || 'Name';
+
+    sendSSE(res, 'tool_call_start', { id: toolCallId, name: 'sort_sheet' });
+
+    const result = await executeTool('sort_sheet', { sheetId, column: firstCol, direction: 'asc' });
+    const toolResult: ToolResult = {
+      toolCallId,
+      name: 'sort_sheet',
+      result: result.data,
+      error: result.error,
+    };
+
+    sendSSE(res, 'tool_result', toolResult);
+    sendSSE(res, 'refresh', {});
+
+    const text = `I've sorted the sheet by ${firstCol} in ascending order.`;
     for (const char of text) {
       sendSSE(res, 'text_delta', { content: char });
     }

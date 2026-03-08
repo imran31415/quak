@@ -50,6 +50,18 @@ const VIEW_OPTIONS: { type: ViewType; label: string; icon: React.ReactNode }[] =
       </svg>
     ),
   },
+  {
+    type: 'pivot',
+    label: 'Pivot',
+    icon: (
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="1" y="1" width="14" height="14" rx="1" />
+        <line x1="1" y1="5.5" x2="15" y2="5.5" />
+        <line x1="5.5" y1="1" x2="5.5" y2="15" />
+        <path d="M8 8l3 3M8 8l3-3" strokeLinecap="round" />
+      </svg>
+    ),
+  },
 ];
 
 interface ViewSwitcherProps {

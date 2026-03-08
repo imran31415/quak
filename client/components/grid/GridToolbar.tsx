@@ -1,5 +1,6 @@
 import { useSheetStore } from '../../store/sheetStore';
 import { useUndoStore } from '../../store/undoStore';
+import { useUIStore } from '../../store/uiStore';
 import { toCSV, toJSON, downloadFile } from '../../utils/exportUtils';
 import { useRef, useState } from 'react';
 import { useClickOutside } from '../../hooks/useClickOutside';
@@ -19,9 +20,14 @@ export function GridToolbar({ onSearchToggle, searchOpen }: GridToolbarProps) {
   const exportRef = useRef<HTMLDivElement>(null);
   useClickOutside(exportRef, () => setExportOpen(false));
 
+  const viewConfigs = useUIStore((s) => s.viewConfigs);
+  const setViewConfig = useUIStore((s) => s.setViewConfig);
+
   if (!activeSheetMeta) return null;
 
   const selectedCount = selectedRowIds.size;
+  const groupByColumnId = viewConfigs[activeSheetMeta.id]?.groupByColumnId;
+  const groupByColumn = groupByColumnId ? activeSheetMeta.columns.find((c) => c.id === groupByColumnId) : undefined;
 
   const handleBulkDelete = () => {
     if (selectedCount === 0) return;
@@ -45,6 +51,18 @@ export function GridToolbar({ onSearchToggle, searchOpen }: GridToolbarProps) {
   return (
     <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700" data-testid="grid-toolbar">
       <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{activeSheetMeta.name}</span>
+      {groupByColumn && (
+        <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full" data-testid="grouping-indicator">
+          Grouped by: {groupByColumn.name}
+          <button
+            onClick={() => setViewConfig(activeSheetMeta.id, { groupByColumnId: undefined })}
+            className="ml-0.5 text-blue-500 hover:text-blue-700"
+            data-testid="remove-grouping-btn"
+          >
+            &times;
+          </button>
+        </span>
+      )}
       <div className="ml-auto flex gap-2 items-center">
         {/* Undo/Redo */}
         <button

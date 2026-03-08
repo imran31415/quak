@@ -6,6 +6,7 @@ import { ViewConfigPopover } from './ViewConfigPopover';
 import { KanbanView } from './KanbanView';
 import { CalendarView } from './CalendarView';
 import { GalleryView } from './GalleryView';
+import { PivotView } from './PivotView';
 
 export function ViewContainer() {
   const activeSheetId = useSheetStore((s) => s.activeSheetId);
@@ -31,6 +32,7 @@ export function ViewContainer() {
         {currentView === 'kanban' && <KanbanView />}
         {currentView === 'calendar' && <CalendarView />}
         {currentView === 'gallery' && <GalleryView />}
+        {currentView === 'pivot' && <PivotView />}
       </div>
     </div>
   );

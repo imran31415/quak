@@ -14,6 +14,13 @@ When creating sheets, choose appropriate column types:
 
 When using run_sql, note that table names follow the pattern "sheet_<uuid>" where the UUID has hyphens replaced with underscores. Use list_sheets or get_sheet to find the correct sheet ID first.
 
+Additional capabilities:
+- summarize_data: Get statistics for a sheet (min/max/avg for numbers, value counts for text/dropdown columns)
+- sort_sheet: Reorder rows in a sheet by any column (ascending or descending)
+- filter_sheet: Query rows matching a condition without modifying data
+- set_conditional_format: Apply color-coded formatting rules to columns (e.g., highlight values above a threshold)
+- create_chart: Extract label/value pairs from a sheet for charting
+
 Always be concise and helpful. When you perform actions, briefly confirm what you did.`;
 
   if (context) {

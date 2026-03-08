@@ -164,4 +164,54 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
     mutates: false,
   },
+  {
+    name: 'summarize_data',
+    description: 'Get statistical summary of a sheet: min/max/avg for numbers, value counts for text/dropdown, null counts per column',
+    parameters: {
+      sheetId: { type: 'string', description: 'The sheet ID', required: true },
+    },
+    mutates: false,
+  },
+  {
+    name: 'sort_sheet',
+    description: 'Sort all rows in a sheet by a column in ascending or descending order',
+    parameters: {
+      sheetId: { type: 'string', description: 'The sheet ID', required: true },
+      column: { type: 'string', description: 'Column name to sort by', required: true },
+      direction: { type: 'string', description: 'Sort direction: asc or desc (default asc)' },
+    },
+    mutates: true,
+  },
+  {
+    name: 'filter_sheet',
+    description: 'Return rows matching a filter condition (read-only, does not modify data)',
+    parameters: {
+      sheetId: { type: 'string', description: 'The sheet ID', required: true },
+      column: { type: 'string', description: 'Column name to filter on', required: true },
+      operator: { type: 'string', description: 'Filter operator: equals, not_equals, greater_than, less_than, contains', required: true },
+      value: { type: 'string', description: 'Value to compare against', required: true },
+    },
+    mutates: false,
+  },
+  {
+    name: 'set_conditional_format',
+    description: 'Apply conditional formatting rules to a column (e.g., highlight cells matching a condition)',
+    parameters: {
+      sheetId: { type: 'string', description: 'The sheet ID', required: true },
+      columnId: { type: 'string', description: 'The column ID to format', required: true },
+      rules: { type: 'array', description: 'Array of {operator, value, bgColor, textColor} rule objects', required: true },
+    },
+    mutates: true,
+  },
+  {
+    name: 'create_chart',
+    description: 'Extract chart-ready data (labels and values) from a sheet column pair',
+    parameters: {
+      sheetId: { type: 'string', description: 'The sheet ID', required: true },
+      labelColumn: { type: 'string', description: 'Column name for chart labels', required: true },
+      valueColumn: { type: 'string', description: 'Column name for chart values', required: true },
+      limit: { type: 'number', description: 'Max data points (default 20)' },
+    },
+    mutates: false,
+  },
 ];

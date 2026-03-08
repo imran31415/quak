@@ -1,6 +1,7 @@
 import type { CellType } from '@shared/constants';
+import type { ValidationRule } from '@shared/types';
 
-interface ValidationResult {
+export interface ValidationResult {
   valid: boolean;
   error?: string;
 }
@@ -8,40 +9,114 @@ interface ValidationResult {
 export function validateValue(
   value: unknown,
   cellType: CellType,
-  options?: string[]
+  options?: string[],
+  validationRules?: ValidationRule[]
 ): ValidationResult {
-  // Null/undefined/empty always valid (optional fields)
+  const hasRequired = validationRules?.some((r) => r.type === 'required');
+
+  // Null/undefined/empty always valid (optional fields) — unless required rule exists
   if (value === null || value === undefined || value === '') {
+    if (hasRequired) {
+      const reqRule = validationRules!.find((r) => r.type === 'required');
+      return { valid: false, error: reqRule?.message || 'This field is required' };
+    }
     return { valid: true };
   }
 
+  // Basic type validation
   switch (cellType) {
     case 'number': {
       const num = Number(value);
       if (isNaN(num)) return { valid: false, error: 'Must be a number' };
-      return { valid: true };
+      break;
     }
     case 'date': {
       const str = String(value);
       if (isNaN(Date.parse(str))) return { valid: false, error: 'Invalid date format' };
-      return { valid: true };
+      break;
     }
     case 'checkbox': {
       if (typeof value !== 'boolean' && value !== 'true' && value !== 'false' && value !== 0 && value !== 1) {
         return { valid: false, error: 'Must be true or false' };
       }
-      return { valid: true };
+      break;
     }
     case 'dropdown': {
       if (options && options.length > 0 && !options.includes(String(value))) {
         return { valid: false, error: `Must be one of: ${options.join(', ')}` };
       }
-      return { valid: true };
+      break;
     }
     case 'text':
     case 'markdown':
     case 'formula':
     default:
-      return { valid: true };
+      break;
   }
+
+  // Custom validation rules
+  if (validationRules) {
+    for (const rule of validationRules) {
+      if (rule.type === 'required') continue; // Already handled above
+
+      switch (rule.type) {
+        case 'min_value': {
+          const num = Number(value);
+          const min = Number(rule.value);
+          if (!isNaN(num) && !isNaN(min) && num < min) {
+            return { valid: false, error: rule.message || `Must be at least ${min}` };
+          }
+          break;
+        }
+        case 'max_value': {
+          const num = Number(value);
+          const max = Number(rule.value);
+          if (!isNaN(num) && !isNaN(max) && num > max) {
+            return { valid: false, error: rule.message || `Must be at most ${max}` };
+          }
+          break;
+        }
+        case 'min_length': {
+          const len = String(value).length;
+          const min = Number(rule.value);
+          if (!isNaN(min) && len < min) {
+            return { valid: false, error: rule.message || `Must be at least ${min} characters` };
+          }
+          break;
+        }
+        case 'max_length': {
+          const len = String(value).length;
+          const max = Number(rule.value);
+          if (!isNaN(max) && len > max) {
+            return { valid: false, error: rule.message || `Must be at most ${max} characters` };
+          }
+          break;
+        }
+        case 'regex': {
+          if (rule.value) {
+            try {
+              const regex = new RegExp(String(rule.value));
+              if (!regex.test(String(value))) {
+                return { valid: false, error: rule.message || `Does not match pattern` };
+              }
+            } catch {
+              // Invalid regex, skip
+            }
+          }
+          break;
+        }
+        case 'custom_list': {
+          if (rule.value) {
+            const allowed = String(rule.value).split(',').map((s) => s.trim());
+            if (!allowed.includes(String(value))) {
+              return { valid: false, error: rule.message || `Must be one of: ${allowed.join(', ')}` };
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  return { valid: true };
 }

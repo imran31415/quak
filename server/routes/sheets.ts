@@ -456,11 +456,14 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
   try {
     const id = req.params.id as string;
     const columnId = req.params.columnId as string;
-    const { name: newName, cellType: newCellType, width: newWidth, options: newOptions } = req.body as {
+    const { name: newName, cellType: newCellType, width: newWidth, options: newOptions, pinned: newPinned, conditionalFormats: newConditionalFormats, validationRules: newValidationRules } = req.body as {
       name?: string;
       cellType?: string;
       width?: number;
       options?: string[];
+      pinned?: 'left' | null;
+      conditionalFormats?: unknown[];
+      validationRules?: unknown[];
     };
 
     const db = getDb();
@@ -499,6 +502,9 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
     if (newCellType) col.cellType = newCellType;
     if (newWidth !== undefined) col.width = newWidth;
     if (newOptions !== undefined) col.options = newOptions;
+    if (newPinned !== undefined) col.pinned = newPinned;
+    if (newConditionalFormats !== undefined) col.conditionalFormats = newConditionalFormats;
+    if (newValidationRules !== undefined) col.validationRules = newValidationRules;
 
     columns[colIndex] = col;
     const columnsJson = JSON.stringify(columns);

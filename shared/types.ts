@@ -8,6 +8,27 @@ export interface ColumnConfig {
   options?: string[];        // for dropdown
   format?: string;           // for number/date formatting
   formula?: string;          // for formula columns
+  pinned?: 'left' | null;
+  conditionalFormats?: ConditionalFormatRule[];
+  validationRules?: ValidationRule[];
+}
+
+export type ConditionalOperator = 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'is_empty' | 'is_not_empty';
+
+export interface ConditionalFormatRule {
+  id: string;
+  operator: ConditionalOperator;
+  value?: string;
+  bgColor: string;
+  textColor: string;
+}
+
+export type ValidationRuleType = 'required' | 'min_value' | 'max_value' | 'min_length' | 'max_length' | 'regex' | 'custom_list';
+
+export interface ValidationRule {
+  type: ValidationRuleType;
+  value?: string | number;
+  message?: string;
 }
 
 export interface SheetMeta {

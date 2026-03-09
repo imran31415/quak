@@ -323,6 +323,62 @@ router.put('/api/sheets/:id/cells', async (req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
+// PUT /api/sheets/:id/cells/bulk  —  update multiple cells at once
+// ---------------------------------------------------------------------------
+router.put('/api/sheets/:id/cells/bulk', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const { cells } = req.body as {
+      cells: Array<{ rowId: number; column: string; value: unknown }>;
+    };
+
+    if (!cells || !Array.isArray(cells) || cells.length === 0) {
+      res.status(400).json({ error: 'cells array is required' });
+      return;
+    }
+
+    const db = getDb();
+    const tableName = safeTableName(id);
+
+    // Fetch column metadata once
+    const metaResult = await db.runAndReadAll(
+      `SELECT columns FROM __quak_sheets WHERE id = '${id.replace(/'/g, "''")}'`
+    );
+    const metaRows = metaResult.getRowObjectsJson();
+
+    if (metaRows.length === 0) {
+      res.status(404).json({ error: 'Sheet not found' });
+      return;
+    }
+
+    const columnsRaw = (metaRows[0] as Record<string, unknown>).columns;
+    const sheetColumns = (typeof columnsRaw === 'string' ? JSON.parse(columnsRaw) : columnsRaw) as {
+      name: string;
+      cellType: string;
+    }[];
+
+    // Build a map for quick column type lookup
+    const colTypeMap = new Map(sheetColumns.map((c) => [c.name, c.cellType]));
+
+    let updated = 0;
+    for (const cell of cells) {
+      const cellType = colTypeMap.get(cell.column) || 'text';
+      const formattedValue = formatValue(cell.value, cellType);
+      const safeColumn = `"${cell.column.replace(/"/g, '""')}"`;
+      await db.run(
+        `UPDATE "${tableName}" SET ${safeColumn} = ${formattedValue} WHERE rowid = ${Number(cell.rowId)}`
+      );
+      updated++;
+    }
+
+    res.json({ success: true, updated });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: message });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // DELETE /api/sheets/:id/rows  —  delete specific rows by rowid
 // ---------------------------------------------------------------------------
 router.delete('/api/sheets/:id/rows', async (req: Request, res: Response) => {

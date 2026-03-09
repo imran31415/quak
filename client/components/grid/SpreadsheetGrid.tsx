@@ -8,11 +8,13 @@ import {
   colorSchemeLight,
   type ColDef,
   type CellValueChangedEvent,
+  type CellClickedEvent,
   type FilterChangedEvent,
   type ColumnResizedEvent,
 } from 'ag-grid-community';
 import { useSheetData } from '../../hooks/useSheetData';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
+import { useClipboard } from '../../hooks/useClipboard';
 import { useUndoStore } from '../../store/undoStore';
 import { useSheetStore } from '../../store/sheetStore';
 import { useTheme } from '../../hooks/useTheme';
@@ -77,7 +79,7 @@ function AddColumnHeaderComp(props: any) {
   );
 }
 
-function getColDefs(columns: ColumnConfig[]): ColDef[] {
+function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, colName: string) => boolean): ColDef[] {
   return columns.map((col) => {
     const def: ColDef = {
       field: col.name,
@@ -144,13 +146,28 @@ function getColDefs(columns: ColumnConfig[]): ColDef[] {
       def.cellEditor = 'agTextCellEditor';
     }
 
-    // Conditional formatting
-    if (col.conditionalFormats?.length) {
-      def.cellStyle = (params) => {
+    // Cell styling: conditional formatting + selection highlighting
+    def.cellStyle = (params) => {
+      let style: Record<string, string> = {};
+
+      // Conditional formatting
+      if (col.conditionalFormats?.length) {
         const isDark = document.documentElement.classList.contains('dark');
-        return evaluateRules(params.value, col.conditionalFormats!, isDark ? 'dark' : 'light');
-      };
-    }
+        const cfStyle = evaluateRules(params.value, col.conditionalFormats!, isDark ? 'dark' : 'light');
+        if (cfStyle) style = { ...style, ...cfStyle };
+      }
+
+      // Selection highlighting
+      if (isInSelection && params.rowIndex !== null && isInSelection(params.rowIndex, col.name)) {
+        const isDark = document.documentElement.classList.contains('dark');
+        style = {
+          ...style,
+          backgroundColor: isDark ? 'rgba(96, 165, 250, 0.2)' : 'rgba(59, 130, 246, 0.15)',
+        };
+      }
+
+      return Object.keys(style).length ? style : undefined;
+    };
 
     return def;
   });
@@ -172,6 +189,12 @@ export function SpreadsheetGrid() {
   const groupByColumnId = activeSheetId ? viewConfigs[activeSheetId]?.groupByColumnId : undefined;
 
   useUndoRedo();
+
+  const { onCellClicked: clipboardCellClicked, isInSelection, selectionInfo } = useClipboard({
+    gridRef,
+    meta,
+    rows,
+  });
 
   const toggleGroupCollapse = useCallback((groupId: string) => {
     setCollapsedGroups((prev) => {
@@ -212,7 +235,7 @@ export function SpreadsheetGrid() {
       suppressMovable: true,
     };
 
-    let dataCols = getColDefs(meta.columns);
+    let dataCols = getColDefs(meta.columns, isInSelection);
 
     // Add grouping renderers when grouping is active
     if (groupByColumnId) {
@@ -261,7 +284,7 @@ export function SpreadsheetGrid() {
     };
 
     return [rowActionsCol, ...dataCols, addCol];
-  }, [meta, groupByColumnId, collapsedGroups, toggleGroupCollapse]);
+  }, [meta, groupByColumnId, collapsedGroups, toggleGroupCollapse, isInSelection]);
 
   const onCellValueChanged = useCallback((event: CellValueChangedEvent) => {
     if (event.rowIndex !== null && event.colDef.field && event.colDef.field !== '__actions' && event.colDef.field !== '__add_column') {
@@ -375,8 +398,10 @@ export function SpreadsheetGrid() {
             floatingFilter: true,
           }}
           onCellValueChanged={onCellValueChanged}
+          onCellClicked={clipboardCellClicked as (event: CellClickedEvent) => void}
           onFilterChanged={onFilterChanged}
           onColumnResized={onColumnResized}
+          suppressClipboardPaste={true}
           animateRows={false}
           getRowId={(params) => String(params.data.__idx)}
           enterNavigatesVertically={true}
@@ -397,7 +422,7 @@ export function SpreadsheetGrid() {
           </div>
         )}
       </div>
-      <StatusBar filteredCount={displayedRowCount} />
+      <StatusBar filteredCount={displayedRowCount} selectionInfo={selectionInfo} />
     </div>
   );
 }

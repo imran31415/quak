@@ -73,6 +73,12 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  bulkUpdateCells: (sheetId: string, cells: Array<{ rowId: number; column: string; value: unknown }>) =>
+    request(`/sheets/${sheetId}/cells/bulk`, {
+      method: 'PUT',
+      body: JSON.stringify({ cells }),
+    }),
+
   importFile: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

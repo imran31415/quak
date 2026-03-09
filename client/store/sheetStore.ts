@@ -27,6 +27,7 @@ interface SheetState {
   addColumn: (column: { name: string; cellType: string; width?: number; options?: string[] }) => Promise<void>;
   deleteColumn: (columnId: string) => Promise<void>;
   renameColumn: (columnId: string, newName: string) => Promise<void>;
+  bulkUpdateCells: (cells: Array<{ rowIndex: number; column: string; value: unknown }>) => void;
   updateColumnWidth: (columnId: string, width: number) => void;
   updateColumnConfig: (columnId: string, config: Partial<ColumnConfig>) => Promise<void>;
   toggleRowSelection: (rowId: number) => void;
@@ -117,6 +118,33 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       if (rowId !== undefined) {
         api.updateCell(activeSheetId, rowId, column, value).catch((err) => {
           toast(`Failed to save cell: ${(err as Error).message}`);
+        });
+      }
+    }
+  },
+
+  bulkUpdateCells: (cells) => {
+    const { rows, activeSheetId } = get();
+    const newRows = [...rows];
+    for (const cell of cells) {
+      if (newRows[cell.rowIndex]) {
+        newRows[cell.rowIndex] = { ...newRows[cell.rowIndex], [cell.column]: cell.value };
+      }
+    }
+    set({ rows: newRows });
+
+    if (activeSheetId) {
+      const apiCells = cells
+        .map((c) => {
+          const rowId = rows[c.rowIndex]?.rowid as number | undefined;
+          if (rowId === undefined) return null;
+          return { rowId, column: c.column, value: c.value };
+        })
+        .filter((c): c is { rowId: number; column: string; value: unknown } => c !== null);
+
+      if (apiCells.length > 0) {
+        api.bulkUpdateCells(activeSheetId, apiCells).catch((err) => {
+          toast(`Failed to save cells: ${(err as Error).message}`);
         });
       }
     }

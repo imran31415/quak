@@ -34,6 +34,12 @@ function applyUndo(action: ReturnType<typeof useUndoStore.getState>['past'][0]) 
     case 'cell_edit':
       store.updateCell(p.rowIndex as number, p.column as string, p.oldValue);
       break;
+    case 'cells_paste': {
+      const cells = p.cells as Array<{ rowIndex: number; column: string; oldValue: unknown; newValue: unknown }>;
+      const restoreUpdates = cells.map((c) => ({ rowIndex: c.rowIndex, column: c.column, value: c.oldValue }));
+      store.bulkUpdateCells(restoreUpdates);
+      break;
+    }
     case 'row_add':
       // Delete the specific row that was added using its rowid
       if (store.activeSheetId && p.rowId !== undefined) {
@@ -75,6 +81,12 @@ function applyRedo(action: ReturnType<typeof useUndoStore.getState>['past'][0]) 
     case 'cell_edit':
       store.updateCell(p.rowIndex as number, p.column as string, p.newValue);
       break;
+    case 'cells_paste': {
+      const cells = p.cells as Array<{ rowIndex: number; column: string; oldValue: unknown; newValue: unknown }>;
+      const redoUpdates = cells.map((c) => ({ rowIndex: c.rowIndex, column: c.column, value: c.newValue }));
+      store.bulkUpdateCells(redoUpdates);
+      break;
+    }
     case 'row_add':
       store.addRow();
       break;

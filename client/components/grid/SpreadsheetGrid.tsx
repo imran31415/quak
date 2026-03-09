@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useRef, useState } from 'react';
+import { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import {
   AllCommunityModule,
@@ -11,6 +11,7 @@ import {
   type CellClickedEvent,
   type FilterChangedEvent,
   type ColumnResizedEvent,
+  type RowDragEndEvent,
 } from 'ag-grid-community';
 import { useSheetData } from '../../hooks/useSheetData';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
@@ -25,11 +26,16 @@ import { SearchBar } from './SearchBar';
 import { FilterBar } from './FilterBar';
 import { RowActions } from './RowActions';
 import { AddColumnPanel } from './AddColumnPanel';
+import { FindReplaceBar, type FindMatch } from './FindReplaceBar';
+import { CellCommentPopover } from './CellCommentPopover';
+import { useCommentStore } from '../../store/commentStore';
+import { AuditLogPanel } from './AuditLogPanel';
 import { ColumnHeaderMenu } from './ColumnHeaderMenu';
 import { DatePickerEditor } from '../cells/DatePickerEditor';
 import { validateValue } from '../../utils/validation';
 import { evaluateRules } from '../../utils/conditionalFormat';
 import { buildGroupedRows } from '../../utils/grouping';
+import { buildSummaryRow } from '../../utils/summaryRow';
 import { useUIStore } from '../../store/uiStore';
 import { useToastStore } from '../../store/toastStore';
 import { GroupHeaderRenderer } from './GroupHeaderRenderer';
@@ -79,14 +85,26 @@ function AddColumnHeaderComp(props: any) {
   );
 }
 
-function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, colName: string) => boolean): ColDef[] {
+function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, colName: string) => boolean, findHighlights?: FindMatch[], hasComment?: (rowId: number, colName: string) => boolean): ColDef[] {
+  const highlightSet = findHighlights?.length
+    ? new Set(findHighlights.map((m) => `${m.rowIndex}_${m.colName}`))
+    : null;
   return columns.map((col) => {
+    const baseEditable = col.cellType !== 'checkbox' && col.cellType !== 'formula';
     const def: ColDef = {
       field: col.name,
       headerName: col.name,
       width: col.width || 150,
-      editable: col.cellType !== 'checkbox' && col.cellType !== 'formula',
-      cellRenderer: renderers[col.cellType as CellType] || renderers.text,
+      editable: (params) => {
+        if (params.data?.__isSummaryRow) return false;
+        return baseEditable;
+      },
+      cellRendererSelector: (params: any) => {
+        if (params.data?.__isSummaryRow) {
+          return { component: renderers.text };
+        }
+        return { component: renderers[col.cellType as CellType] || renderers.text, params: { cellType: col.cellType } };
+      },
       cellRendererParams: { cellType: col.cellType },
       headerComponent: DataColumnHeader,
       headerComponentParams: { colConfig: col },
@@ -104,11 +122,21 @@ function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, 
       return true;
     };
 
-    // Validation error styling
-    if (col.validationRules?.length) {
-      def.cellClassRules = {
-        'validation-error': (params) => !validateValue(params.value, col.cellType as CellType, col.options, col.validationRules).valid,
+    // Comment indicator + validation error styling
+    const classRules: Record<string, (params: any) => boolean> = {};
+    if (hasComment) {
+      classRules['has-comment'] = (params) => {
+        const rowId = params.data?.rowid as number | undefined;
+        return rowId !== undefined && hasComment(rowId, col.name);
       };
+    }
+    if (col.validationRules?.length) {
+      classRules['validation-error'] = (params) => !validateValue(params.value, col.cellType as CellType, col.options, col.validationRules).valid;
+    }
+    if (Object.keys(classRules).length > 0) {
+      def.cellClassRules = classRules;
+    }
+    if (col.validationRules?.length) {
       def.tooltipValueGetter = (params) => {
         const result = validateValue(params.value, col.cellType as CellType, col.options, col.validationRules);
         return result.valid ? undefined : result.error;
@@ -157,6 +185,14 @@ function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, 
         if (cfStyle) style = { ...style, ...cfStyle };
       }
 
+      // Find & Replace highlighting
+      if (highlightSet && params.rowIndex !== null && highlightSet.has(`${params.rowIndex}_${col.name}`)) {
+        style = {
+          ...style,
+          backgroundColor: 'rgba(250, 204, 21, 0.3)',
+        };
+      }
+
       // Selection highlighting
       if (isInSelection && params.rowIndex !== null && isInSelection(params.rowIndex, col.name)) {
         const isDark = document.documentElement.classList.contains('dark');
@@ -184,11 +220,35 @@ export function SpreadsheetGrid() {
   const [displayedRowCount, setDisplayedRowCount] = useState<number | null>(null);
   const [searchMatchCount, setSearchMatchCount] = useState<number | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  const [findHighlights, setFindHighlights] = useState<FindMatch[]>([]);
+  const [commentPopover, setCommentPopover] = useState<{
+    rowId: number;
+    columnId: string;
+    position: { top: number; left: number };
+  } | null>(null);
+  const commentHasComment = useCommentStore((s) => s.hasComment);
+  const fetchComments = useCommentStore((s) => s.fetchComments);
+  const auditPanelOpen = useUIStore((s) => s.auditPanelOpen);
   const undoPush = useUndoStore((s) => s.push);
   const viewConfigs = useUIStore((s) => s.viewConfigs);
   const groupByColumnId = activeSheetId ? viewConfigs[activeSheetId]?.groupByColumnId : undefined;
+  const showTotals = activeSheetId ? viewConfigs[activeSheetId]?.showTotals : false;
+  const frozenRowIds = activeSheetId ? viewConfigs[activeSheetId]?.frozenRowIds || [] : [];
 
   useUndoRedo();
+
+  useEffect(() => {
+    const handler = () => setFindReplaceOpen(true);
+    document.addEventListener('quak-open-find-replace', handler);
+    return () => document.removeEventListener('quak-open-find-replace', handler);
+  }, []);
+
+  useEffect(() => {
+    if (activeSheetId) {
+      fetchComments(activeSheetId);
+    }
+  }, [activeSheetId, fetchComments]);
 
   const { onCellClicked: clipboardCellClicked, isInSelection, selectionInfo } = useClipboard({
     gridRef,
@@ -212,6 +272,21 @@ export function SpreadsheetGrid() {
     return buildGroupedRows(rows, groupCol, meta.columns, collapsedGroups);
   }, [rows, meta, groupByColumnId, collapsedGroups]);
 
+  const pinnedBottomRowData = useMemo(
+    () => showTotals && meta ? [buildSummaryRow(rows, meta.columns)] : undefined,
+    [showTotals, rows, meta]
+  );
+
+  const frozenSet = useMemo(() => new Set(frozenRowIds), [frozenRowIds]);
+  const pinnedTopRowData = useMemo(
+    () => frozenRowIds.length > 0 ? displayRows.filter((r) => frozenSet.has(r.rowid as number)) : undefined,
+    [frozenRowIds, displayRows, frozenSet]
+  );
+  const regularRowData = useMemo(
+    () => frozenRowIds.length > 0 ? displayRows.filter((r) => !frozenSet.has(r.rowid as number)) : displayRows,
+    [frozenRowIds, displayRows, frozenSet]
+  );
+
   const gridTheme = useMemo(
     () => resolvedTheme === 'dark'
       ? themeAlpine.withPart(colorSchemeDark)
@@ -222,10 +297,24 @@ export function SpreadsheetGrid() {
   const columnDefs = useMemo(() => {
     if (!meta) return [];
 
+    const dragCol: ColDef = {
+      headerName: '',
+      field: '__drag',
+      width: 30,
+      pinned: 'left',
+      rowDrag: !groupByColumnId,
+      editable: false,
+      sortable: false,
+      filter: false,
+      resizable: false,
+      suppressMovable: true,
+      cellRenderer: () => null,
+    };
+
     const rowActionsCol: ColDef = {
       headerName: '',
       field: '__actions',
-      width: 60,
+      width: 80,
       pinned: 'left',
       cellRenderer: RowActions,
       editable: false,
@@ -235,37 +324,41 @@ export function SpreadsheetGrid() {
       suppressMovable: true,
     };
 
-    let dataCols = getColDefs(meta.columns, isInSelection);
+    let dataCols = getColDefs(meta.columns, isInSelection, findHighlights, commentHasComment);
 
     // Add grouping renderers when grouping is active
     if (groupByColumnId) {
       const groupCol = meta.columns.find((c) => c.id === groupByColumnId);
       const firstColField = groupCol?.name || meta.columns[0]?.name;
-      dataCols = dataCols.map((def) => ({
-        ...def,
-        cellRendererSelector: (params: any) => {
-          if (params.data?.__isGroupHeader) {
-            if (def.field === firstColField) {
-              return {
-                component: GroupHeaderRenderer,
-                params: {
-                  onToggle: toggleGroupCollapse,
-                  collapsed: collapsedGroups.has(params.data.__groupId),
-                },
-              };
+      dataCols = dataCols.map((def) => {
+        const colConfig = meta.columns.find((c) => c.name === def.field);
+        const colEditable = colConfig ? colConfig.cellType !== 'checkbox' && colConfig.cellType !== 'formula' : true;
+        return {
+          ...def,
+          cellRendererSelector: (params: any) => {
+            if (params.data?.__isGroupHeader) {
+              if (def.field === firstColField) {
+                return {
+                  component: GroupHeaderRenderer,
+                  params: {
+                    onToggle: toggleGroupCollapse,
+                    collapsed: collapsedGroups.has(params.data.__groupId),
+                  },
+                };
+              }
+              return { component: () => null };
             }
-            return { component: () => null };
-          }
-          if (params.data?.__isSubtotalRow) {
-            return { component: SubtotalRenderer };
-          }
-          return undefined;
-        },
-        editable: (params: any) => {
-          if (params.data?.__isGroupHeader || params.data?.__isSubtotalRow) return false;
-          return def.editable as boolean;
-        },
-      }));
+            if (params.data?.__isSubtotalRow) {
+              return { component: SubtotalRenderer };
+            }
+            return undefined;
+          },
+          editable: (params: any) => {
+            if (params.data?.__isGroupHeader || params.data?.__isSubtotalRow || params.data?.__isSummaryRow) return false;
+            return colEditable;
+          },
+        };
+      });
     }
 
     const addCol: ColDef = {
@@ -283,8 +376,8 @@ export function SpreadsheetGrid() {
       headerComponentParams: { onAdd: () => setAddColumnOpen(true) },
     };
 
-    return [rowActionsCol, ...dataCols, addCol];
-  }, [meta, groupByColumnId, collapsedGroups, toggleGroupCollapse, isInSelection]);
+    return [dragCol, rowActionsCol, ...dataCols, addCol];
+  }, [meta, groupByColumnId, collapsedGroups, toggleGroupCollapse, isInSelection, findHighlights, commentHasComment]);
 
   const onCellValueChanged = useCallback((event: CellValueChangedEvent) => {
     if (event.rowIndex !== null && event.colDef.field && event.colDef.field !== '__actions' && event.colDef.field !== '__add_column') {
@@ -310,6 +403,23 @@ export function SpreadsheetGrid() {
     setActiveFilterCount(Object.keys(filterModel).length);
     setDisplayedRowCount(event.api.getDisplayedRowCount());
   }, []);
+
+  const onRowDragEnd = useCallback((event: RowDragEndEvent) => {
+    if (!activeSheetId) return;
+    const oldOrder = rows.map((r) => r.rowid as number);
+    const newOrder: number[] = [];
+    event.api.forEachNode((node) => {
+      if (node.data?.rowid !== undefined) {
+        newOrder.push(node.data.rowid as number);
+      }
+    });
+    undoPush({
+      type: 'row_reorder',
+      sheetId: activeSheetId,
+      payload: { oldOrder, newOrder },
+    });
+    useSheetStore.getState().reorderRows(newOrder);
+  }, [activeSheetId, rows, undoPush]);
 
   const onColumnResized = useCallback((event: ColumnResizedEvent) => {
     if (event.finished && event.column && meta) {
@@ -373,6 +483,7 @@ export function SpreadsheetGrid() {
       <GridToolbar
         onSearchToggle={handleSearchToggle}
         searchOpen={searchOpen}
+        gridRef={gridRef}
       />
       {searchOpen && (
         <SearchBar
@@ -385,12 +496,41 @@ export function SpreadsheetGrid() {
           matchCount={searchMatchCount}
         />
       )}
+      {findReplaceOpen && meta && (
+        <FindReplaceBar
+          rows={rows}
+          columns={meta.columns}
+          gridRef={gridRef}
+          onReplace={(cells, undoCells) => {
+            useSheetStore.getState().bulkUpdateCells(cells);
+            if (activeSheetId) {
+              undoPush({
+                type: 'find_replace',
+                sheetId: activeSheetId,
+                payload: { cells: undoCells },
+              });
+            }
+            gridRef.current?.api?.refreshCells({ force: true });
+          }}
+          onHighlightChange={(matches) => {
+            setFindHighlights(matches);
+            gridRef.current?.api?.refreshCells({ force: true });
+          }}
+          onClose={() => {
+            setFindReplaceOpen(false);
+            setFindHighlights([]);
+            gridRef.current?.api?.refreshCells({ force: true });
+          }}
+        />
+      )}
       <FilterBar activeFilterCount={activeFilterCount} onClearAll={handleClearFilters} />
       <div className="flex-1 relative" data-testid="ag-grid-container">
         <AgGridReact
           ref={gridRef}
           theme={gridTheme}
-          rowData={displayRows}
+          rowData={regularRowData}
+          pinnedTopRowData={pinnedTopRowData}
+          pinnedBottomRowData={pinnedBottomRowData}
           columnDefs={columnDefs}
           defaultColDef={{
             resizable: true,
@@ -401,6 +541,23 @@ export function SpreadsheetGrid() {
           onCellClicked={clipboardCellClicked as (event: CellClickedEvent) => void}
           onFilterChanged={onFilterChanged}
           onColumnResized={onColumnResized}
+          rowDragManaged={true}
+          onRowDragEnd={onRowDragEnd}
+          onCellContextMenu={(event) => {
+            const field = event.colDef.field;
+            if (!field || field === '__actions' || field === '__add_column' || field === '__drag') return;
+            if (event.data?.__isGroupHeader || event.data?.__isSubtotalRow || event.data?.__isSummaryRow) return;
+            const rowId = event.data?.rowid as number | undefined;
+            if (rowId === undefined) return;
+
+            event.event?.preventDefault();
+            const mouseEvent = event.event as MouseEvent;
+            setCommentPopover({
+              rowId,
+              columnId: field,
+              position: { top: mouseEvent.clientY, left: mouseEvent.clientX },
+            });
+          }}
           suppressClipboardPaste={true}
           animateRows={false}
           getRowId={(params) => String(params.data.__idx)}
@@ -423,6 +580,21 @@ export function SpreadsheetGrid() {
         )}
       </div>
       <StatusBar filteredCount={displayedRowCount} selectionInfo={selectionInfo} />
+      {commentPopover && activeSheetId && (
+        <CellCommentPopover
+          sheetId={activeSheetId}
+          rowId={commentPopover.rowId}
+          columnId={commentPopover.columnId}
+          position={commentPopover.position}
+          onClose={() => {
+            setCommentPopover(null);
+            gridRef.current?.api?.refreshCells({ force: true });
+          }}
+        />
+      )}
+      {auditPanelOpen && activeSheetId && (
+        <AuditLogPanel sheetId={activeSheetId} />
+      )}
     </div>
   );
 }

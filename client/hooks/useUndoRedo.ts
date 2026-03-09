@@ -64,6 +64,20 @@ function applyUndo(action: ReturnType<typeof useUndoStore.getState>['past'][0]) 
         });
       }
       break;
+    case 'row_reorder':
+      if (store.activeSheetId && p.oldOrder) {
+        const oldOrder = p.oldOrder as number[];
+        api.reorderRows(store.activeSheetId, oldOrder).then(() => {
+          store.loadSheet(store.activeSheetId!);
+        });
+      }
+      break;
+    case 'find_replace': {
+      const cells = p.cells as Array<{ rowIndex: number; column: string; oldValue: unknown; newValue: unknown }>;
+      const restoreUpdates = cells.map((c) => ({ rowIndex: c.rowIndex, column: c.column, value: c.oldValue }));
+      store.bulkUpdateCells(restoreUpdates);
+      break;
+    }
     default:
       // For column operations, just reload the sheet
       if (store.activeSheetId) {
@@ -101,6 +115,20 @@ function applyRedo(action: ReturnType<typeof useUndoStore.getState>['past'][0]) 
         }
       }
       break;
+    case 'row_reorder':
+      if (store.activeSheetId && p.newOrder) {
+        const newOrder = p.newOrder as number[];
+        api.reorderRows(store.activeSheetId, newOrder).then(() => {
+          store.loadSheet(store.activeSheetId!);
+        });
+      }
+      break;
+    case 'find_replace': {
+      const cells = p.cells as Array<{ rowIndex: number; column: string; oldValue: unknown; newValue: unknown }>;
+      const redoUpdates = cells.map((c) => ({ rowIndex: c.rowIndex, column: c.column, value: c.newValue }));
+      store.bulkUpdateCells(redoUpdates);
+      break;
+    }
     default:
       if (store.activeSheetId) {
         store.loadSheet(store.activeSheetId);

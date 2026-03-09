@@ -1,16 +1,22 @@
 import type { ICellRendererParams } from 'ag-grid-community';
 import { useSheetStore } from '../../store/sheetStore';
 import { useUndoStore } from '../../store/undoStore';
+import { useUIStore } from '../../store/uiStore';
 
 export function RowActions(props: ICellRendererParams) {
   const { selectedRowIds, toggleRowSelection, deleteRow, activeSheetId } = useSheetStore();
   const undoPush = useUndoStore((s) => s.push);
+  const viewConfigs = useUIStore((s) => s.viewConfigs);
+  const setViewConfig = useUIStore((s) => s.setViewConfig);
+
   const rowId = props.data?.rowid as number | undefined;
   const rowIndex = props.node?.rowIndex ?? 0;
   const isSelected = rowId !== undefined && selectedRowIds.has(rowId);
 
+  const frozenRowIds = activeSheetId ? viewConfigs[activeSheetId]?.frozenRowIds || [] : [];
+  const isFrozen = rowId !== undefined && frozenRowIds.includes(rowId);
+
   const handleDelete = () => {
-    // Capture row data before deletion for undo
     if (activeSheetId && props.data) {
       const rowData = { ...props.data };
       undoPush({
@@ -20,6 +26,19 @@ export function RowActions(props: ICellRendererParams) {
       });
     }
     deleteRow(rowIndex);
+  };
+
+  const handleToggleFreeze = () => {
+    if (rowId === undefined || !activeSheetId) return;
+    if (isFrozen) {
+      setViewConfig(activeSheetId, {
+        frozenRowIds: frozenRowIds.filter((id) => id !== rowId),
+      });
+    } else {
+      setViewConfig(activeSheetId, {
+        frozenRowIds: [...frozenRowIds, rowId],
+      });
+    }
   };
 
   return (
@@ -32,6 +51,17 @@ export function RowActions(props: ICellRendererParams) {
         aria-label={`Select row ${rowIndex + 1}`}
         data-testid={`row-select-${rowIndex}`}
       />
+      <button
+        onClick={handleToggleFreeze}
+        className={`p-0.5 ${isFrozen ? 'text-blue-500' : 'text-gray-300 dark:text-gray-600 hover:text-blue-400 dark:hover:text-blue-400'}`}
+        title={isFrozen ? 'Unpin row' : 'Pin row to top'}
+        aria-label={isFrozen ? `Unpin row ${rowIndex + 1}` : `Pin row ${rowIndex + 1}`}
+        data-testid={`row-pin-${rowIndex}`}
+      >
+        <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M9.828.722a.5.5 0 01.354.146l4.95 4.95a.5.5 0 01-.707.707l-.71-.71L11 8.528V12.5a.5.5 0 01-.854.354L7.5 10.207l-3.646 3.647a.5.5 0 01-.708-.708L6.793 9.5 4.146 6.854A.5.5 0 014.5 6h3.972l2.713-2.714-.71-.71a.5.5 0 01.354-.854z" />
+        </svg>
+      </button>
       <button
         onClick={handleDelete}
         className="p-0.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400"

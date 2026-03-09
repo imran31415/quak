@@ -12,6 +12,13 @@ export interface PivotConfig {
   aggregation: AggregationType;
 }
 
+export interface SavedFilter {
+  id: string;
+  name: string;
+  filterModel: Record<string, unknown>;
+  sortModel?: Array<{ colId: string; sort: string }>;
+}
+
 export interface ViewConfig {
   viewType?: ViewType;
   kanbanColumnId?: string;
@@ -19,6 +26,9 @@ export interface ViewConfig {
   galleryTitleColumnId?: string;
   groupByColumnId?: string;
   pivotConfig?: PivotConfig;
+  showTotals?: boolean;
+  frozenRowIds?: number[];
+  savedFilters?: SavedFilter[];
 }
 
 interface UIState {
@@ -31,6 +41,7 @@ interface UIState {
   viewConfigs: Record<string, ViewConfig>;
   viewConfigPopoverOpen: boolean;
   theme: 'light' | 'dark' | 'system';
+  auditPanelOpen: boolean;
 
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
@@ -45,6 +56,7 @@ interface UIState {
   getViewConfig: (sheetId: string) => ViewConfig;
   setViewConfigPopoverOpen: (open: boolean) => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  toggleAuditPanel: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -59,6 +71,7 @@ export const useUIStore = create<UIState>()(
       viewConfigs: {},
       viewConfigPopoverOpen: false,
       theme: 'system',
+      auditPanelOpen: false,
 
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -85,6 +98,7 @@ export const useUIStore = create<UIState>()(
       getViewConfig: (sheetId) => get().viewConfigs[sheetId] || {},
       setViewConfigPopoverOpen: (open) => set({ viewConfigPopoverOpen: open }),
       setTheme: (theme) => set({ theme }),
+      toggleAuditPanel: () => set((s) => ({ auditPanelOpen: !s.auditPanelOpen })),
     }),
     {
       name: 'quak-ui-store',

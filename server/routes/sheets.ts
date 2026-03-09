@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { getDb } from '../db.js';
 import { batchInsert } from '../utils/batchInsert.js';
 import { cellTypeToDuckDB, safeTableName, formatValue } from '../utils/sql.js';
+import { logAudit } from '../utils/auditLog.js';
 
 const router = Router();
 
@@ -56,8 +57,8 @@ router.post('/api/sheets', async (req: Request, res: Response) => {
 
     const db = getDb();
 
-    // Create the data table
-    await db.run(`CREATE TABLE "${tableName}" (${colDefs})`);
+    // Create the data table with __order column for row ordering
+    await db.run(`CREATE TABLE "${tableName}" (__order INTEGER, ${colDefs})`);
 
     // Insert metadata into __quak_sheets
     const columnsJson = JSON.stringify(columns);
@@ -97,9 +98,9 @@ router.get('/api/sheets/:id', async (req: Request, res: Response) => {
       meta.columns = JSON.parse(meta.columns);
     }
 
-    // Fetch all rows from the data table
+    // Fetch all rows from the data table, ordered by __order
     const tableName = safeTableName(id);
-    const dataResult = await db.runAndReadAll(`SELECT rowid, * FROM "${tableName}"`);
+    const dataResult = await db.runAndReadAll(`SELECT rowid, * FROM "${tableName}" ORDER BY __order ASC`);
     const rows = dataResult.getRowObjectsJson();
 
     res.json({ ...meta, rows });
@@ -245,8 +246,12 @@ router.post('/api/sheets/:id/rows', async (req: Request, res: Response) => {
       cellType: string;
     }[];
 
-    const colNames = sheetColumns.map((c) => `"${c.name.replace(/"/g, '""')}"`).join(', ');
-    const values = sheetColumns
+    // Get next __order value
+    const orderResult = await db.runAndReadAll(`SELECT COALESCE(MAX(__order), 0) + 1 as next_order FROM "${tableName}"`);
+    const nextOrder = (orderResult.getRowObjectsJson()[0] as Record<string, unknown>)?.next_order ?? 1;
+
+    const colNames = `__order, ` + sheetColumns.map((c) => `"${c.name.replace(/"/g, '""')}"`).join(', ');
+    const values = `${nextOrder}, ` + sheetColumns
       .map((col) => {
         const val = row[col.name];
         if (val === null || val === undefined) return 'NULL';
@@ -263,6 +268,7 @@ router.post('/api/sheets/:id/rows', async (req: Request, res: Response) => {
     const lastRowRows = lastRowResult.getRowObjectsJson();
     const lastRowid = (lastRowRows[0] as Record<string, unknown>)?.last_rowid;
 
+    logAudit(id, 'row_add', { rowId: lastRowid });
     res.status(201).json({ success: true, rowid: lastRowid });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -314,6 +320,8 @@ router.put('/api/sheets/:id/cells', async (req: Request, res: Response) => {
     await db.run(
       `UPDATE "${tableName}" SET ${safeColumn} = ${formattedValue} WHERE rowid = ${Number(rowIndex)}`
     );
+
+    logAudit(id, 'cell_update', { rowId: rowIndex, column, value });
 
     res.json({ success: true });
   } catch (err: unknown) {
@@ -371,6 +379,8 @@ router.put('/api/sheets/:id/cells/bulk', async (req: Request, res: Response) => 
       updated++;
     }
 
+    logAudit(id, 'bulk_cell_update', { count: updated });
+
     res.json({ success: true, updated });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -396,6 +406,8 @@ router.delete('/api/sheets/:id/rows', async (req: Request, res: Response) => {
 
     const idList = rowIds.map(Number).join(', ');
     await db.run(`DELETE FROM "${tableName}" WHERE rowid IN (${idList})`);
+
+    logAudit(id, 'rows_delete', { rowIds });
 
     res.json({ success: true, deleted: rowIds.length });
   } catch (err: unknown) {
@@ -452,6 +464,7 @@ router.post('/api/sheets/:id/columns', async (req: Request, res: Response) => {
       `UPDATE __quak_sheets SET columns = '${columnsJson.replace(/'/g, "''")}', updated_at = current_timestamp WHERE id = '${id.replace(/'/g, "''")}'`
     );
 
+    logAudit(id, 'column_add', { columnName: name, cellType });
     res.status(201).json(newCol);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -497,6 +510,8 @@ router.delete('/api/sheets/:id/columns/:columnId', async (req: Request, res: Res
     await db.run(
       `UPDATE __quak_sheets SET columns = '${columnsJson.replace(/'/g, "''")}', updated_at = current_timestamp WHERE id = '${id.replace(/'/g, "''")}'`
     );
+
+    logAudit(id, 'column_delete', { columnId, columnName: col.name as string });
 
     res.json({ success: true });
   } catch (err: unknown) {
@@ -568,7 +583,47 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
       `UPDATE __quak_sheets SET columns = '${columnsJson.replace(/'/g, "''")}', updated_at = current_timestamp WHERE id = '${id.replace(/'/g, "''")}'`
     );
 
+    if (newName && newName !== oldName) {
+      logAudit(id, 'column_rename', { columnId, oldName, newName });
+    }
+
     res.json(col);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// PUT /api/sheets/:id/rows/reorder  —  reorder rows by setting __order
+// ---------------------------------------------------------------------------
+router.put('/api/sheets/:id/rows/reorder', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const { rowIds } = req.body as { rowIds: number[] };
+
+    if (!rowIds || !Array.isArray(rowIds) || rowIds.length === 0) {
+      res.status(400).json({ error: 'rowIds array is required' });
+      return;
+    }
+
+    const db = getDb();
+    const tableName = safeTableName(id);
+
+    // Ensure __order column exists (for tables created before this feature)
+    try {
+      await db.run(`ALTER TABLE "${tableName}" ADD COLUMN __order INTEGER`);
+    } catch {
+      // Column already exists
+    }
+
+    for (let i = 0; i < rowIds.length; i++) {
+      await db.run(`UPDATE "${tableName}" SET __order = ${i} WHERE rowid = ${Number(rowIds[i])}`);
+    }
+
+    logAudit(id, 'row_reorder', { rowCount: rowIds.length });
+
+    res.json({ success: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     res.status(500).json({ error: message });

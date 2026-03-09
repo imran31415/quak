@@ -4,13 +4,16 @@ import { useUIStore } from '../../store/uiStore';
 import { toCSV, toJSON, downloadFile } from '../../utils/exportUtils';
 import { useRef, useState } from 'react';
 import { useClickOutside } from '../../hooks/useClickOutside';
+import type { AgGridReact } from 'ag-grid-react';
+import { SavedFiltersMenu } from './SavedFiltersMenu';
 
 interface GridToolbarProps {
   onSearchToggle: () => void;
   searchOpen: boolean;
+  gridRef: React.RefObject<AgGridReact | null>;
 }
 
-export function GridToolbar({ onSearchToggle, searchOpen }: GridToolbarProps) {
+export function GridToolbar({ onSearchToggle, searchOpen, gridRef }: GridToolbarProps) {
   const { activeSheetMeta, rows, addRow, selectedRowIds, deleteRows, clearSelection } = useSheetStore();
   const { past, future } = useUndoStore();
   const undo = useUndoStore((s) => s.undo);
@@ -22,12 +25,15 @@ export function GridToolbar({ onSearchToggle, searchOpen }: GridToolbarProps) {
 
   const viewConfigs = useUIStore((s) => s.viewConfigs);
   const setViewConfig = useUIStore((s) => s.setViewConfig);
+  const toggleAuditPanel = useUIStore((s) => s.toggleAuditPanel);
+  const auditPanelOpen = useUIStore((s) => s.auditPanelOpen);
 
   if (!activeSheetMeta) return null;
 
   const selectedCount = selectedRowIds.size;
   const groupByColumnId = viewConfigs[activeSheetMeta.id]?.groupByColumnId;
   const groupByColumn = groupByColumnId ? activeSheetMeta.columns.find((c) => c.id === groupByColumnId) : undefined;
+  const showTotals = viewConfigs[activeSheetMeta.id]?.showTotals || false;
 
   const handleBulkDelete = () => {
     if (selectedCount === 0) return;
@@ -45,6 +51,12 @@ export function GridToolbar({ onSearchToggle, searchOpen }: GridToolbarProps) {
       const content = toJSON(rows);
       downloadFile(content, `${activeSheetMeta.name}.json`, 'application/json');
     }
+    setExportOpen(false);
+  };
+
+  const handleExportXLSX = async () => {
+    const { exportToXLSX } = await import('../../utils/xlsxExport');
+    exportToXLSX(activeSheetMeta.name, activeSheetMeta.columns, rows);
     setExportOpen(false);
   };
 
@@ -105,6 +117,35 @@ export function GridToolbar({ onSearchToggle, searchOpen }: GridToolbarProps) {
           </svg>
         </button>
 
+        {/* Totals toggle */}
+        <button
+          onClick={() => setViewConfig(activeSheetMeta.id, { showTotals: !showTotals })}
+          className={`p-1 rounded ${showTotals ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+          title="Toggle totals row"
+          aria-label="Toggle totals"
+          data-testid="totals-toggle"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.745 3A23.933 23.933 0 003 12c0 3.183.62 6.22 1.745 9M19.5 3c.967 2.78 1.5 5.817 1.5 9s-.533 6.22-1.5 9M8.25 8.885l1.444-.89a.75.75 0 011.105.402l2.402 7.206a.75.75 0 001.105.401l1.444-.889" />
+          </svg>
+        </button>
+
+        {/* Saved Filters */}
+        <SavedFiltersMenu gridRef={gridRef} sheetId={activeSheetMeta.id} />
+
+        {/* Audit Log */}
+        <button
+          onClick={toggleAuditPanel}
+          className={`p-1 rounded ${auditPanelOpen ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+          title="Audit log"
+          aria-label="Toggle audit log"
+          data-testid="audit-log-toggle"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+
         <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
 
         {/* Bulk delete */}
@@ -132,6 +173,7 @@ export function GridToolbar({ onSearchToggle, searchOpen }: GridToolbarProps) {
             <div className="absolute right-0 top-full mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg z-20" role="menu">
               <button onClick={() => handleExport('csv')} className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200" role="menuitem" data-testid="export-csv">CSV</button>
               <button onClick={() => handleExport('json')} className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200" role="menuitem" data-testid="export-json">JSON</button>
+              <button onClick={handleExportXLSX} className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200" role="menuitem" data-testid="export-xlsx">XLSX</button>
             </div>
           )}
         </div>

@@ -202,6 +202,12 @@ export function useClipboard({ gridRef, meta, rows }: UseClipboardOptions) {
 
       const isCtrlOrMeta = e.ctrlKey || e.metaKey;
 
+      if (isCtrlOrMeta && e.key === 'h') {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent('quak-open-find-replace'));
+        return;
+      }
+
       if (isCtrlOrMeta && e.key === 'c') {
         if (anchorRef.current) {
           e.preventDefault();

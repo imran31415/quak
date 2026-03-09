@@ -5,6 +5,8 @@ import sheetsRouter from './routes/sheets.js';
 import queryRouter from './routes/query.js';
 import importExportRouter from './routes/importExport.js';
 import chatRouter from './routes/chat.js';
+import commentsRouter from './routes/comments.js';
+import auditRouter from './routes/audit.js';
 
 const app = express();
 
@@ -16,5 +18,7 @@ app.use(sheetsRouter);
 app.use(queryRouter);
 app.use(importExportRouter);
 app.use(chatRouter);
+app.use(commentsRouter);
+app.use(auditRouter);
 
 export default app;

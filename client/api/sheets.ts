@@ -79,6 +79,35 @@ export const api = {
       body: JSON.stringify({ cells }),
     }),
 
+  reorderRows: (sheetId: string, rowIds: number[]) =>
+    request(`/sheets/${sheetId}/rows/reorder`, {
+      method: 'PUT',
+      body: JSON.stringify({ rowIds }),
+    }),
+
+  // Comments
+  getComments: (sheetId: string) =>
+    request<Array<{ id: string; sheet_id: string; row_id: number; column_id: string; text: string; created_at: string; updated_at: string }>>(`/sheets/${sheetId}/comments`),
+
+  addComment: (sheetId: string, rowId: number, columnId: string, text: string) =>
+    request<{ id: string }>(`/sheets/${sheetId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ rowId, columnId, text }),
+    }),
+
+  updateComment: (sheetId: string, commentId: string, text: string) =>
+    request(`/sheets/${sheetId}/comments/${commentId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ text }),
+    }),
+
+  deleteComment: (sheetId: string, commentId: string) =>
+    request(`/sheets/${sheetId}/comments/${commentId}`, { method: 'DELETE' }),
+
+  // Audit log
+  getAuditLog: (sheetId: string, limit = 50, offset = 0) =>
+    request<Array<{ id: string; sheet_id: string; action: string; details: Record<string, unknown>; created_at: string }>>(`/sheets/${sheetId}/audit?limit=${limit}&offset=${offset}`),
+
   importFile: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

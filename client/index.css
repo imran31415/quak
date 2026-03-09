@@ -17,6 +17,20 @@ html.dark {
   outline-offset: -2px;
 }
 
+.has-comment {
+  position: relative;
+}
+
+.has-comment::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-width: 6px;
+  border-style: solid;
+  border-color: #f59e0b #f59e0b transparent transparent;
+}
+
 * {
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }

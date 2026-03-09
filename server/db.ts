@@ -20,6 +20,28 @@ export async function initDb(): Promise<void> {
       updated_at TIMESTAMP DEFAULT current_timestamp
     )
   `);
+
+  await connection.run(`
+    CREATE TABLE IF NOT EXISTS __quak_comments (
+      id VARCHAR PRIMARY KEY,
+      sheet_id VARCHAR,
+      row_id INTEGER,
+      column_id VARCHAR,
+      text VARCHAR,
+      created_at TIMESTAMP DEFAULT current_timestamp,
+      updated_at TIMESTAMP DEFAULT current_timestamp
+    )
+  `);
+
+  await connection.run(`
+    CREATE TABLE IF NOT EXISTS __quak_audit_log (
+      id VARCHAR PRIMARY KEY,
+      sheet_id VARCHAR,
+      action VARCHAR,
+      details JSON,
+      created_at TIMESTAMP DEFAULT current_timestamp
+    )
+  `);
 }
 
 export function getDb() {

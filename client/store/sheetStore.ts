@@ -30,6 +30,7 @@ interface SheetState {
   bulkUpdateCells: (cells: Array<{ rowIndex: number; column: string; value: unknown }>) => void;
   updateColumnWidth: (columnId: string, width: number) => void;
   updateColumnConfig: (columnId: string, config: Partial<ColumnConfig>) => Promise<void>;
+  reorderRows: (rowIds: number[]) => void;
   toggleRowSelection: (rowId: number) => void;
   selectAllRows: () => void;
   clearSelection: () => void;
@@ -300,6 +301,26 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     const { rows } = get();
     const all = new Set(rows.map((r) => r.rowid as number).filter((id) => id !== undefined));
     set({ selectedRowIds: all });
+  },
+
+  reorderRows: (rowIds: number[]) => {
+    const { rows, activeSheetId } = get();
+    // Reorder rows in local state
+    const rowMap = new Map(rows.map((r) => [r.rowid as number, r]));
+    const reordered = rowIds.map((id) => rowMap.get(id)).filter(Boolean) as Record<string, unknown>[];
+    // Add any rows not in rowIds at the end
+    const idSet = new Set(rowIds);
+    for (const row of rows) {
+      if (!idSet.has(row.rowid as number)) reordered.push(row);
+    }
+    set({ rows: reordered });
+
+    if (activeSheetId) {
+      api.reorderRows(activeSheetId, rowIds).catch((err) => {
+        toast(`Failed to reorder rows: ${(err as Error).message}`);
+        get().loadSheet(activeSheetId);
+      });
+    }
   },
 
   clearSelection: () => {

@@ -11,16 +11,21 @@ export function AddColumnPanel({ onClose }: AddColumnPanelProps) {
   const [name, setName] = useState('');
   const [cellType, setCellType] = useState<CellType>('text');
   const [options, setOptions] = useState('');
+  const [formula, setFormula] = useState('');
   const { addColumn } = useSheetStore();
 
   const handleAdd = async () => {
     if (!name.trim()) return;
-    const col: { name: string; cellType: string; options?: string[] } = {
+    if (cellType === 'formula' && !formula.trim()) return;
+    const col: { name: string; cellType: string; options?: string[]; formula?: string } = {
       name: name.trim(),
       cellType,
     };
     if (cellType === 'dropdown' && options.trim()) {
       col.options = options.split(',').map((o) => o.trim()).filter(Boolean);
+    }
+    if (cellType === 'formula' && formula.trim()) {
+      col.formula = formula.trim();
     }
     await addColumn(col);
     onClose();
@@ -59,10 +64,20 @@ export function AddColumnPanel({ onClose }: AddColumnPanelProps) {
           data-testid="add-col-options"
         />
       )}
+      {cellType === 'formula' && (
+        <textarea
+          value={formula}
+          onChange={(e) => setFormula(e.target.value)}
+          placeholder="e.g., Price * Quantity"
+          className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded mb-2 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          rows={2}
+          data-testid="add-col-formula"
+        />
+      )}
       <div className="flex gap-2">
         <button
           onClick={handleAdd}
-          disabled={!name.trim()}
+          disabled={!name.trim() || (cellType === 'formula' && !formula.trim())}
           className="flex-1 px-3 py-1.5 text-sm bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 disabled:opacity-50"
           data-testid="add-col-submit"
         >

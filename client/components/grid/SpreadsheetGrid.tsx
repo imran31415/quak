@@ -66,6 +66,7 @@ function DataColumnHeader(props: any) {
         columnName={colConfig.name}
         cellType={colConfig.cellType}
         pinned={colConfig.pinned}
+        formula={colConfig.formula}
         conditionalFormats={colConfig.conditionalFormats}
         validationRules={colConfig.validationRules}
       />

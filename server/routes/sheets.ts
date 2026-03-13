@@ -50,8 +50,9 @@ router.post('/api/sheets', async (req: Request, res: Response) => {
     const id = crypto.randomUUID();
     const tableName = safeTableName(id);
 
-    // Build column definitions for the data table
-    const colDefs = columns
+    // Build column definitions for the data table (skip formula columns — they are virtual)
+    const physicalColumns = columns.filter((col) => col.cellType !== 'formula');
+    const colDefs = physicalColumns
       .map((col) => `"${col.name.replace(/"/g, '""')}" ${cellTypeToDuckDB(col.cellType)}`)
       .join(', ');
 
@@ -100,8 +101,36 @@ router.get('/api/sheets/:id', async (req: Request, res: Response) => {
 
     // Fetch all rows from the data table, ordered by __order
     const tableName = safeTableName(id);
-    const dataResult = await db.runAndReadAll(`SELECT rowid, * FROM "${tableName}" ORDER BY __order ASC`);
-    const rows = dataResult.getRowObjectsJson();
+    const columns = meta.columns as Array<{ name: string; cellType: string; formula?: string }>;
+
+    // Build computed expressions for formula columns
+    const formulaCols = columns.filter((c) => c.cellType === 'formula' && c.formula);
+    let rows: Record<string, unknown>[];
+
+    if (formulaCols.length > 0) {
+      const formulaExprs = formulaCols
+        .map((c) => `TRY_CAST(TRY(${c.formula}) AS VARCHAR) AS "${c.name!.replace(/"/g, '""')}"`)
+        .join(', ');
+
+      try {
+        const dataResult = await db.runAndReadAll(
+          `SELECT rowid, *, ${formulaExprs} FROM "${tableName}" ORDER BY __order ASC`
+        );
+        rows = dataResult.getRowObjectsJson();
+      } catch {
+        // Formula query failed — fall back to base query, fill formula columns with #ERROR
+        const dataResult = await db.runAndReadAll(`SELECT rowid, * FROM "${tableName}" ORDER BY __order ASC`);
+        rows = dataResult.getRowObjectsJson();
+        for (const row of rows) {
+          for (const fc of formulaCols) {
+            row[fc.name] = '#ERROR';
+          }
+        }
+      }
+    } else {
+      const dataResult = await db.runAndReadAll(`SELECT rowid, * FROM "${tableName}" ORDER BY __order ASC`);
+      rows = dataResult.getRowObjectsJson();
+    }
 
     res.json({ ...meta, rows });
   } catch (err: unknown) {
@@ -208,8 +237,9 @@ router.put('/api/sheets/:id/rows', async (req: Request, res: Response) => {
     // Delete all existing rows
     await db.run(`DELETE FROM "${tableName}"`);
 
-    // Insert new rows in batches
-    await batchInsert(db, tableName, sheetColumns, rows);
+    // Insert new rows in batches (skip formula columns — they are virtual)
+    const physicalCols = sheetColumns.filter((c) => c.cellType !== 'formula');
+    await batchInsert(db, tableName, physicalCols, rows);
 
     res.json({ success: true, rowCount: rows.length });
   } catch (err: unknown) {
@@ -250,8 +280,10 @@ router.post('/api/sheets/:id/rows', async (req: Request, res: Response) => {
     const orderResult = await db.runAndReadAll(`SELECT COALESCE(MAX(__order), 0) + 1 as next_order FROM "${tableName}"`);
     const nextOrder = (orderResult.getRowObjectsJson()[0] as Record<string, unknown>)?.next_order ?? 1;
 
-    const colNames = `__order, ` + sheetColumns.map((c) => `"${c.name.replace(/"/g, '""')}"`).join(', ');
-    const values = `${nextOrder}, ` + sheetColumns
+    // Skip formula columns — they are virtual and have no physical column
+    const physicalColumns = sheetColumns.filter((c) => c.cellType !== 'formula');
+    const colNames = `__order, ` + physicalColumns.map((c) => `"${c.name.replace(/"/g, '""')}"`).join(', ');
+    const values = `${nextOrder}, ` + physicalColumns
       .map((col) => {
         const val = row[col.name];
         if (val === null || val === undefined) return 'NULL';
@@ -313,6 +345,12 @@ router.put('/api/sheets/:id/cells', async (req: Request, res: Response) => {
       cellType: string;
     }[];
     const colDef = sheetColumns.find((c) => c.name === column);
+
+    // Reject writes to formula columns — they are computed
+    if (colDef?.cellType === 'formula') {
+      res.status(400).json({ error: 'Cannot edit formula column cells' });
+      return;
+    }
 
     const formattedValue = formatValue(value, colDef?.cellType || 'text');
 
@@ -422,11 +460,12 @@ router.delete('/api/sheets/:id/rows', async (req: Request, res: Response) => {
 router.post('/api/sheets/:id/columns', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
-    const { name, cellType, width, options } = req.body as {
+    const { name, cellType, width, options, formula } = req.body as {
       name: string;
       cellType: string;
       width?: number;
       options?: string[];
+      formula?: string;
     };
 
     if (!name || !cellType) {
@@ -437,9 +476,11 @@ router.post('/api/sheets/:id/columns', async (req: Request, res: Response) => {
     const db = getDb();
     const tableName = safeTableName(id);
 
-    // Add column to DuckDB table
-    const safeName = name.replace(/"/g, '""');
-    await db.run(`ALTER TABLE "${tableName}" ADD COLUMN "${safeName}" ${cellTypeToDuckDB(cellType)}`);
+    // Formula columns are virtual — skip physical column creation
+    if (cellType !== 'formula') {
+      const safeName = name.replace(/"/g, '""');
+      await db.run(`ALTER TABLE "${tableName}" ADD COLUMN "${safeName}" ${cellTypeToDuckDB(cellType)}`);
+    }
 
     // Update columns metadata
     const metaResult = await db.runAndReadAll(
@@ -457,6 +498,7 @@ router.post('/api/sheets/:id/columns', async (req: Request, res: Response) => {
     const colId = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
     const newCol: Record<string, unknown> = { id: colId, name, cellType, width: width || 150 };
     if (options) newCol.options = options;
+    if (formula) newCol.formula = formula;
     columns.push(newCol);
 
     const columnsJson = JSON.stringify(columns);
@@ -502,8 +544,11 @@ router.delete('/api/sheets/:id/columns/:columnId', async (req: Request, res: Res
       return;
     }
 
-    const colName = (col.name as string).replace(/"/g, '""');
-    await db.run(`ALTER TABLE "${tableName}" DROP COLUMN "${colName}"`);
+    // Formula columns are virtual — skip physical column drop
+    if (col.cellType !== 'formula') {
+      const colName = (col.name as string).replace(/"/g, '""');
+      await db.run(`ALTER TABLE "${tableName}" DROP COLUMN "${colName}"`);
+    }
 
     const updatedColumns = columns.filter((c) => c.id !== columnId);
     const columnsJson = JSON.stringify(updatedColumns);
@@ -527,7 +572,7 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
   try {
     const id = req.params.id as string;
     const columnId = req.params.columnId as string;
-    const { name: newName, cellType: newCellType, width: newWidth, options: newOptions, pinned: newPinned, conditionalFormats: newConditionalFormats, validationRules: newValidationRules } = req.body as {
+    const { name: newName, cellType: newCellType, width: newWidth, options: newOptions, pinned: newPinned, conditionalFormats: newConditionalFormats, validationRules: newValidationRules, formula: newFormula } = req.body as {
       name?: string;
       cellType?: string;
       width?: number;
@@ -535,6 +580,7 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
       pinned?: 'left' | null;
       conditionalFormats?: unknown[];
       validationRules?: unknown[];
+      formula?: string;
     };
 
     const db = getDb();
@@ -562,11 +608,13 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
     const col = columns[colIndex];
     const oldName = col.name as string;
 
-    // Rename in DuckDB if name changed
+    // Rename in DuckDB if name changed (skip for formula columns — they are virtual)
     if (newName && newName !== oldName) {
-      const safeOld = oldName.replace(/"/g, '""');
-      const safeNew = newName.replace(/"/g, '""');
-      await db.run(`ALTER TABLE "${tableName}" RENAME COLUMN "${safeOld}" TO "${safeNew}"`);
+      if (col.cellType !== 'formula') {
+        const safeOld = oldName.replace(/"/g, '""');
+        const safeNew = newName.replace(/"/g, '""');
+        await db.run(`ALTER TABLE "${tableName}" RENAME COLUMN "${safeOld}" TO "${safeNew}"`);
+      }
       col.name = newName;
     }
 
@@ -576,6 +624,7 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
     if (newPinned !== undefined) col.pinned = newPinned;
     if (newConditionalFormats !== undefined) col.conditionalFormats = newConditionalFormats;
     if (newValidationRules !== undefined) col.validationRules = newValidationRules;
+    if (newFormula !== undefined) col.formula = newFormula;
 
     columns[colIndex] = col;
     const columnsJson = JSON.stringify(columns);

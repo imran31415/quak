@@ -12,19 +12,22 @@ interface ColumnHeaderMenuProps {
   columnName: string;
   cellType: CellType;
   pinned?: 'left' | null;
+  formula?: string;
   conditionalFormats?: ConditionalFormatRule[];
   validationRules?: ValidationRule[];
 }
 
-export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, conditionalFormats, validationRules }: ColumnHeaderMenuProps) {
+export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, formula, conditionalFormats, validationRules }: ColumnHeaderMenuProps) {
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState(columnName);
   const [changingType, setChangingType] = useState(false);
+  const [editingFormula, setEditingFormula] = useState(false);
+  const [newFormula, setNewFormula] = useState(formula || '');
   const [showConditionalFormat, setShowConditionalFormat] = useState(false);
   const [showValidationRules, setShowValidationRules] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { renameColumn, deleteColumn, updateColumnConfig } = useSheetStore();
+  const { renameColumn, deleteColumn, updateColumnConfig, loadSheet } = useSheetStore();
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -32,6 +35,7 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, condi
         setOpen(false);
         setRenaming(false);
         setChangingType(false);
+        setEditingFormula(false);
         setShowConditionalFormat(false);
         setShowValidationRules(false);
       }
@@ -53,6 +57,15 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, condi
       await deleteColumn(columnId);
       setOpen(false);
     }
+  };
+
+  const handleSaveFormula = async () => {
+    const { activeSheetId } = useSheetStore.getState();
+    if (activeSheetId && newFormula.trim()) {
+      await updateColumnConfig(columnId, { formula: newFormula.trim() });
+    }
+    setEditingFormula(false);
+    setOpen(false);
   };
 
   const handleChangeType = async (type: CellType) => {
@@ -78,7 +91,7 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, condi
   };
 
   return (
-    <div className="relative inline-block" ref={menuRef}>
+    <div className={`relative inline-block ${open ? 'z-[100]' : ''}`} ref={menuRef}>
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
         className="ml-1 p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
@@ -106,6 +119,22 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, condi
               <div className="flex gap-1 mt-1">
                 <button onClick={handleRename} className="flex-1 px-2 py-1 text-xs bg-blue-600 text-white rounded">Save</button>
                 <button onClick={() => { setRenaming(false); setNewName(columnName); }} className="flex-1 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-200">Cancel</button>
+              </div>
+            </div>
+          ) : editingFormula ? (
+            <div className="p-2">
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Formula (SQL expression)</label>
+              <textarea
+                value={newFormula}
+                onChange={(e) => setNewFormula(e.target.value)}
+                className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                rows={2}
+                autoFocus
+                data-testid="formula-input"
+              />
+              <div className="flex gap-1 mt-1">
+                <button onClick={handleSaveFormula} className="flex-1 px-2 py-1 text-xs bg-blue-600 text-white rounded" data-testid="formula-save-btn">Save</button>
+                <button onClick={() => { setEditingFormula(false); setNewFormula(formula || ''); }} className="flex-1 px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-200">Cancel</button>
               </div>
             </div>
           ) : changingType ? (
@@ -157,6 +186,15 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, condi
               >
                 Validation Rules
               </button>
+              {cellType === 'formula' && (
+                <button
+                  onClick={() => { setEditingFormula(true); setNewFormula(formula || ''); }}
+                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                  data-testid="edit-formula-btn"
+                >
+                  Edit Formula
+                </button>
+              )}
               {(cellType === 'text' || cellType === 'dropdown') && (() => {
                 const { activeSheetId } = useSheetStore.getState();
                 const viewConfigs = useUIStore.getState().viewConfigs;

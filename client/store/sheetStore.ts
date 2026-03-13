@@ -24,7 +24,7 @@ interface SheetState {
   addRow: () => Promise<number | undefined>;
   deleteRow: (rowIndex: number) => void;
   deleteRows: (rowIndices: number[]) => void;
-  addColumn: (column: { name: string; cellType: string; width?: number; options?: string[] }) => Promise<void>;
+  addColumn: (column: { name: string; cellType: string; width?: number; options?: string[]; formula?: string }) => Promise<void>;
   deleteColumn: (columnId: string) => Promise<void>;
   renameColumn: (columnId: string, newName: string) => Promise<void>;
   bulkUpdateCells: (cells: Array<{ rowIndex: number; column: string; value: unknown }>) => void;
@@ -109,7 +109,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   },
 
   updateCell: (rowIndex: number, column: string, value: unknown) => {
-    const { rows, activeSheetId } = get();
+    const { rows, activeSheetId, activeSheetMeta } = get();
     const newRows = [...rows];
     newRows[rowIndex] = { ...newRows[rowIndex], [column]: value };
     set({ rows: newRows });
@@ -117,9 +117,17 @@ export const useSheetStore = create<SheetState>((set, get) => ({
     if (activeSheetId) {
       const rowId = rows[rowIndex].rowid as number | undefined;
       if (rowId !== undefined) {
-        api.updateCell(activeSheetId, rowId, column, value).catch((err) => {
-          toast(`Failed to save cell: ${(err as Error).message}`);
-        });
+        api.updateCell(activeSheetId, rowId, column, value)
+          .then(() => {
+            // Reload to recalculate formula columns
+            const hasFormulas = activeSheetMeta?.columns.some((c) => c.cellType === 'formula');
+            if (hasFormulas) {
+              get().loadSheet(activeSheetId);
+            }
+          })
+          .catch((err) => {
+            toast(`Failed to save cell: ${(err as Error).message}`);
+          });
       }
     }
   },
@@ -157,6 +165,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
     const newRow: Record<string, unknown> = {};
     for (const col of activeSheetMeta.columns) {
+      if (col.cellType === 'formula') continue; // formula columns are computed server-side
       switch (col.cellType) {
         case 'checkbox':
           newRow[col.name] = false;

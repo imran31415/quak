@@ -7,7 +7,8 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 ## Features
 
 - **AI Chat Assistant** — natural-language interface powered by LLMs (OpenRouter) with 16 tools including data summarization, sorting, filtering, and conditional formatting
-- **Multiple views** — Grid, Kanban, Calendar, Gallery, and Pivot views over the same data
+- **Multiple views** — Grid, Kanban, Calendar, Gallery, Pivot, and Form views over the same data
+- **Forms** — auto-generated submission forms from sheet schema with shareable public URLs, client-side validation, and standalone form pages
 - **Pivot tables** — cross-tabulate data with configurable row/column/value fields and SUM/COUNT/AVG/MIN/MAX aggregation
 - **Column freezing** — pin columns to stay visible while scrolling horizontally
 - **Conditional formatting** — color-code cells based on value rules (equals, greater than, contains, etc.)
@@ -59,6 +60,14 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 ### AI Chat Assistant
 
 ![AI Chat](screenshots/ai-chat.png)
+
+### Form View (In-App)
+
+![Form View](screenshots/form-view.png)
+
+### Standalone Form Page
+
+![Standalone Form](screenshots/form-standalone.png)
 
 ### Dark Mode
 
@@ -113,7 +122,7 @@ npm run docs:dev
 
 Then open http://localhost:5173 to browse the docs, including:
 
-- [Multiple Views](docs/features/views.md) — Grid, Kanban, Calendar, Gallery, and Pivot
+- [Multiple Views](docs/features/views.md) — Grid, Kanban, Calendar, Gallery, Pivot, and Form
 - [Pivot Tables](docs/features/pivot-tables.md) — cross-tabulation with aggregation
 - [Column Freezing](docs/features/column-freezing.md) — pin columns for horizontal scrolling
 - [Conditional Formatting](docs/features/conditional-formatting.md) — color-code cells by value
@@ -141,7 +150,7 @@ quak/
 │   └── components/  # UI components
 │       ├── layout/  # AppShell, Header, Sidebar, MobileNav
 │       ├── grid/    # SpreadsheetGrid, GridToolbar, StatusBar
-│       ├── views/   # ViewContainer, Kanban, Calendar, Gallery
+│       ├── views/   # ViewContainer, Kanban, Calendar, Gallery, Form
 │       ├── cells/   # CellRouter + per-type renderers
 │       ├── chat/    # AI chat panel + tool call cards
 │       ├── query/   # SQL panel, charts, history, templates
@@ -167,8 +176,8 @@ quak/
 
 ```bash
 make test           # All tests (unit + E2E)
-make test-unit      # Unit tests only (Vitest, 11 files)
-make test-e2e       # E2E tests only (Playwright, 20 files)
+make test-unit      # Unit tests only (Vitest, 14 files)
+make test-e2e       # E2E tests only (Playwright, 33 files)
 make test-file F=query  # Single E2E test file
 make check          # Quick: typecheck + unit
 make verify         # Full: typecheck + unit + E2E

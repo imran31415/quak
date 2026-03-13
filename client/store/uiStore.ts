@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type ViewType = 'grid' | 'kanban' | 'calendar' | 'gallery' | 'pivot';
+export type ViewType = 'grid' | 'kanban' | 'calendar' | 'gallery' | 'pivot' | 'form';
 
 export type AggregationType = 'SUM' | 'COUNT' | 'AVG' | 'MIN' | 'MAX';
 

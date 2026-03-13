@@ -19,6 +19,8 @@ export const api = {
 
   getSheet: (id: string) => request<SheetData & SheetMeta>(`/sheets/${id}`),
 
+  getSchema: (id: string) => request<SheetMeta & { linkedRecordOptions?: Record<string, Array<{ rowid: number; displayValue: string }>> }>(`/sheets/${id}/schema`),
+
   createSheet: (name: string, columns: { name: string; cellType: string; width?: number; options?: string[] }[]) =>
     request<{ id: string }>('/sheets', {
       method: 'POST',

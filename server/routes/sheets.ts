@@ -241,6 +241,70 @@ router.get('/api/sheets/:id', async (req: Request, res: Response) => {
 });
 
 // ---------------------------------------------------------------------------
+// GET /api/sheets/:id/schema  —  get sheet schema (metadata + linkedRecordOptions, no rows)
+// ---------------------------------------------------------------------------
+router.get('/api/sheets/:id/schema', async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const db = getDb();
+
+    // Fetch metadata
+    const metaResult = await db.runAndReadAll(
+      `SELECT id, name, columns, created_at, updated_at FROM __quak_sheets WHERE id = '${id.replace(/'/g, "''")}'`
+    );
+    const metaRows = metaResult.getRowObjectsJson();
+
+    if (metaRows.length === 0) {
+      res.status(404).json({ error: 'Sheet not found' });
+      return;
+    }
+
+    const meta = metaRows[0] as Record<string, unknown>;
+    if (typeof meta.columns === 'string') {
+      meta.columns = JSON.parse(meta.columns);
+    }
+
+    const columns = meta.columns as Array<{
+      id: string; name: string; cellType: string;
+      linkedSheetId?: string; linkedDisplayColumn?: string;
+    }>;
+
+    // Fetch linked record options for dropdowns
+    const linkedRecordCols = columns.filter(
+      (c) => c.cellType === 'linked_record' && c.linkedSheetId && c.linkedDisplayColumn
+    );
+
+    const linkedRecordOptions: Record<string, Array<{ rowid: number; displayValue: string }>> = {};
+    for (const lrCol of linkedRecordCols) {
+      const linkedTable = safeTableName(lrCol.linkedSheetId!);
+      try {
+        const safeDisplayCol = lrCol.linkedDisplayColumn!.replace(/"/g, '""');
+        const optResult = await db.runAndReadAll(
+          `SELECT rowid, "${safeDisplayCol}" AS display_value FROM "${linkedTable}" ORDER BY rowid ASC`
+        );
+        const optRows = optResult.getRowObjectsJson() as Array<Record<string, unknown>>;
+        linkedRecordOptions[lrCol.id] = optRows.map((r) => ({
+          rowid: Number(r.rowid),
+          displayValue: r.display_value != null ? String(r.display_value) : '',
+        }));
+      } catch {
+        // Skip if linked table doesn't exist
+      }
+    }
+
+    const response: Record<string, unknown> = { ...meta };
+    if (Object.keys(linkedRecordOptions).length > 0) {
+      response.linkedRecordOptions = linkedRecordOptions;
+    }
+
+    res.json(response);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    res.status(500).json({ error: message });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // PUT /api/sheets/:id  —  update sheet metadata (name, columns)
 // ---------------------------------------------------------------------------
 router.put('/api/sheets/:id', async (req: Request, res: Response) => {

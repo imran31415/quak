@@ -41,7 +41,7 @@ export function QueryPanel() {
       className={`${
         isMobile
           ? 'fixed inset-x-0 bottom-14 top-1/2 z-40'
-          : 'border-t border-gray-200 dark:border-gray-700'
+          : 'border-t border-gray-200 dark:border-gray-700 relative z-10'
       } bg-white dark:bg-gray-800 flex flex-col`}
       data-testid="query-panel"
     >

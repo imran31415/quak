@@ -9,6 +9,8 @@ export function cellTypeToDuckDB(cellType: string): string {
       return 'BOOLEAN';
     case 'date':
       return 'DATE';
+    case 'linked_record':
+      return 'INTEGER';
     case 'text':
     case 'dropdown':
     case 'formula':
@@ -28,7 +30,7 @@ export function safeTableName(id: string): string {
 
 export function formatValue(val: unknown, cellType: string): string {
   if (val === null || val === undefined || val === '') return 'NULL';
-  if (cellType === 'number') return String(Number(val));
+  if (cellType === 'number' || cellType === 'linked_record') return String(Number(val));
   if (cellType === 'checkbox') return val ? 'TRUE' : 'FALSE';
   return `'${String(val).replace(/'/g, "''")}'`;
 }

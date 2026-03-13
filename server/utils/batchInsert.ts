@@ -1,6 +1,6 @@
 function formatValue(val: unknown, cellType: string): string {
   if (val === null || val === undefined || val === '') return 'NULL';
-  if (cellType === 'number') return String(Number(val));
+  if (cellType === 'number' || cellType === 'linked_record') return String(Number(val));
   if (cellType === 'checkbox') return (val === 'true' || val === true) ? 'TRUE' : 'FALSE';
   return `'${String(val).replace(/'/g, "''")}'`;
 }

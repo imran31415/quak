@@ -10,7 +10,9 @@ describe('Constants', () => {
     expect(CELL_TYPES).toContain('date');
     expect(CELL_TYPES).toContain('formula');
     expect(CELL_TYPES).toContain('markdown');
-    expect(CELL_TYPES).toHaveLength(7);
+    expect(CELL_TYPES).toContain('linked_record');
+    expect(CELL_TYPES).toContain('lookup');
+    expect(CELL_TYPES).toHaveLength(9);
   });
 
   it('has text as default cell type', () => {

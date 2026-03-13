@@ -1,4 +1,4 @@
-export const CELL_TYPES = ['text', 'number', 'checkbox', 'dropdown', 'date', 'formula', 'markdown'] as const;
+export const CELL_TYPES = ['text', 'number', 'checkbox', 'dropdown', 'date', 'formula', 'markdown', 'linked_record', 'lookup'] as const;
 
 export type CellType = (typeof CELL_TYPES)[number];
 

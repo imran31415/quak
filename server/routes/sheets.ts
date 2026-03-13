@@ -50,8 +50,8 @@ router.post('/api/sheets', async (req: Request, res: Response) => {
     const id = crypto.randomUUID();
     const tableName = safeTableName(id);
 
-    // Build column definitions for the data table (skip formula columns — they are virtual)
-    const physicalColumns = columns.filter((col) => col.cellType !== 'formula');
+    // Build column definitions for the data table (skip virtual columns)
+    const physicalColumns = columns.filter((col) => col.cellType !== 'formula' && col.cellType !== 'lookup');
     const colDefs = physicalColumns
       .map((col) => `"${col.name.replace(/"/g, '""')}" ${cellTypeToDuckDB(col.cellType)}`)
       .join(', ');
@@ -101,38 +101,139 @@ router.get('/api/sheets/:id', async (req: Request, res: Response) => {
 
     // Fetch all rows from the data table, ordered by __order
     const tableName = safeTableName(id);
-    const columns = meta.columns as Array<{ name: string; cellType: string; formula?: string }>;
+    const columns = meta.columns as Array<{
+      id: string; name: string; cellType: string; formula?: string;
+      linkedSheetId?: string; linkedDisplayColumn?: string;
+      lookupLinkedColumn?: string; lookupReturnColumn?: string;
+    }>;
 
     // Build computed expressions for formula columns
     const formulaCols = columns.filter((c) => c.cellType === 'formula' && c.formula);
-    let rows: Record<string, unknown>[];
 
-    if (formulaCols.length > 0) {
-      const formulaExprs = formulaCols
-        .map((c) => `TRY_CAST(TRY(${c.formula}) AS VARCHAR) AS "${c.name!.replace(/"/g, '""')}"`)
-        .join(', ');
+    // Identify linked_record columns
+    const linkedRecordCols = columns.filter(
+      (c) => c.cellType === 'linked_record' && c.linkedSheetId && c.linkedDisplayColumn
+    );
 
-      try {
-        const dataResult = await db.runAndReadAll(
-          `SELECT rowid, *, ${formulaExprs} FROM "${tableName}" ORDER BY __order ASC`
-        );
-        rows = dataResult.getRowObjectsJson();
-      } catch {
-        // Formula query failed — fall back to base query, fill formula columns with #ERROR
-        const dataResult = await db.runAndReadAll(`SELECT rowid, * FROM "${tableName}" ORDER BY __order ASC`);
-        rows = dataResult.getRowObjectsJson();
-        for (const row of rows) {
-          for (const fc of formulaCols) {
-            row[fc.name] = '#ERROR';
-          }
+    // Identify lookup columns
+    const lookupCols = columns.filter(
+      (c) => c.cellType === 'lookup' && c.lookupLinkedColumn && c.lookupReturnColumn
+    );
+
+    // Verify linked tables exist and build join info
+    interface JoinInfo {
+      alias: string;
+      linkedTableName: string;
+      joinColumn: string; // column name in current table
+    }
+    const joinMap = new Map<string, JoinInfo>(); // keyed by linkedSheetId
+    let aliasCounter = 0;
+
+    for (const lrCol of linkedRecordCols) {
+      if (!joinMap.has(lrCol.linkedSheetId!)) {
+        const linkedTable = safeTableName(lrCol.linkedSheetId!);
+        try {
+          await db.runAndReadAll(`SELECT 1 FROM "${linkedTable}" LIMIT 0`);
+          const alias = `lr${aliasCounter++}`;
+          joinMap.set(lrCol.linkedSheetId!, { alias, linkedTableName: linkedTable, joinColumn: lrCol.name });
+        } catch {
+          // Linked table doesn't exist — skip this join
         }
       }
-    } else {
-      const dataResult = await db.runAndReadAll(`SELECT rowid, * FROM "${tableName}" ORDER BY __order ASC`);
-      rows = dataResult.getRowObjectsJson();
     }
 
-    res.json({ ...meta, rows });
+    // Build LEFT JOIN clauses
+    const joinClauses: string[] = [];
+    for (const [, info] of joinMap) {
+      const safeJoinCol = info.joinColumn.replace(/"/g, '""');
+      joinClauses.push(
+        `LEFT JOIN "${info.linkedTableName}" ${info.alias} ON ${info.alias}.rowid = t."${safeJoinCol}"`
+      );
+    }
+
+    // Build extra SELECT expressions
+    const extraSelects: string[] = [];
+
+    // linked_record display values
+    for (const lrCol of linkedRecordCols) {
+      const info = joinMap.get(lrCol.linkedSheetId!);
+      if (!info) continue;
+      const safeDisplayCol = lrCol.linkedDisplayColumn!.replace(/"/g, '""');
+      const safeColId = lrCol.id.replace(/"/g, '""');
+      extraSelects.push(
+        `TRY_CAST(${info.alias}."${safeDisplayCol}" AS VARCHAR) AS "__lr_display_${safeColId}"`
+      );
+    }
+
+    // lookup values
+    for (const luCol of lookupCols) {
+      // Find the linked_record column this lookup follows
+      const lrCol = columns.find((c) => c.id === luCol.lookupLinkedColumn);
+      if (!lrCol || !lrCol.linkedSheetId) continue;
+      const info = joinMap.get(lrCol.linkedSheetId);
+      if (!info) continue;
+      const safeReturnCol = luCol.lookupReturnColumn!.replace(/"/g, '""');
+      const safeLuName = luCol.name.replace(/"/g, '""');
+      extraSelects.push(
+        `TRY_CAST(${info.alias}."${safeReturnCol}" AS VARCHAR) AS "${safeLuName}"`
+      );
+    }
+
+    // formula values
+    if (formulaCols.length > 0) {
+      for (const fc of formulaCols) {
+        extraSelects.push(
+          `TRY_CAST(TRY(${fc.formula}) AS VARCHAR) AS "${fc.name.replace(/"/g, '""')}"`
+        );
+      }
+    }
+
+    let rows: Record<string, unknown>[];
+    const extraSelectStr = extraSelects.length > 0 ? ', ' + extraSelects.join(', ') : '';
+    const joinStr = joinClauses.length > 0 ? ' ' + joinClauses.join(' ') : '';
+
+    try {
+      const dataResult = await db.runAndReadAll(
+        `SELECT t.rowid, t.*${extraSelectStr} FROM "${tableName}" t${joinStr} ORDER BY t.__order ASC`
+      );
+      rows = dataResult.getRowObjectsJson();
+    } catch {
+      // Fall back to base query
+      const dataResult = await db.runAndReadAll(`SELECT rowid, * FROM "${tableName}" ORDER BY __order ASC`);
+      rows = dataResult.getRowObjectsJson();
+      for (const row of rows) {
+        for (const fc of formulaCols) {
+          row[fc.name] = '#ERROR';
+        }
+      }
+    }
+
+    // Fetch linked record options for dropdowns
+    const linkedRecordOptions: Record<string, Array<{ rowid: number; displayValue: string }>> = {};
+    for (const lrCol of linkedRecordCols) {
+      const info = joinMap.get(lrCol.linkedSheetId!);
+      if (!info) continue;
+      try {
+        const safeDisplayCol = lrCol.linkedDisplayColumn!.replace(/"/g, '""');
+        const optResult = await db.runAndReadAll(
+          `SELECT rowid, "${safeDisplayCol}" AS display_value FROM "${info.linkedTableName}" ORDER BY rowid ASC`
+        );
+        const optRows = optResult.getRowObjectsJson() as Array<Record<string, unknown>>;
+        linkedRecordOptions[lrCol.id] = optRows.map((r) => ({
+          rowid: Number(r.rowid),
+          displayValue: r.display_value != null ? String(r.display_value) : '',
+        }));
+      } catch {
+        // Skip if query fails
+      }
+    }
+
+    const response: Record<string, unknown> = { ...meta, rows };
+    if (Object.keys(linkedRecordOptions).length > 0) {
+      response.linkedRecordOptions = linkedRecordOptions;
+    }
+
+    res.json(response);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     res.status(500).json({ error: message });
@@ -237,8 +338,8 @@ router.put('/api/sheets/:id/rows', async (req: Request, res: Response) => {
     // Delete all existing rows
     await db.run(`DELETE FROM "${tableName}"`);
 
-    // Insert new rows in batches (skip formula columns — they are virtual)
-    const physicalCols = sheetColumns.filter((c) => c.cellType !== 'formula');
+    // Insert new rows in batches (skip virtual columns)
+    const physicalCols = sheetColumns.filter((c) => c.cellType !== 'formula' && c.cellType !== 'lookup');
     await batchInsert(db, tableName, physicalCols, rows);
 
     res.json({ success: true, rowCount: rows.length });
@@ -280,8 +381,8 @@ router.post('/api/sheets/:id/rows', async (req: Request, res: Response) => {
     const orderResult = await db.runAndReadAll(`SELECT COALESCE(MAX(__order), 0) + 1 as next_order FROM "${tableName}"`);
     const nextOrder = (orderResult.getRowObjectsJson()[0] as Record<string, unknown>)?.next_order ?? 1;
 
-    // Skip formula columns — they are virtual and have no physical column
-    const physicalColumns = sheetColumns.filter((c) => c.cellType !== 'formula');
+    // Skip virtual columns — they have no physical column
+    const physicalColumns = sheetColumns.filter((c) => c.cellType !== 'formula' && c.cellType !== 'lookup');
     const colNames = `__order, ` + physicalColumns.map((c) => `"${c.name.replace(/"/g, '""')}"`).join(', ');
     const values = `${nextOrder}, ` + physicalColumns
       .map((col) => {
@@ -346,9 +447,9 @@ router.put('/api/sheets/:id/cells', async (req: Request, res: Response) => {
     }[];
     const colDef = sheetColumns.find((c) => c.name === column);
 
-    // Reject writes to formula columns — they are computed
-    if (colDef?.cellType === 'formula') {
-      res.status(400).json({ error: 'Cannot edit formula column cells' });
+    // Reject writes to virtual columns — they are computed
+    if (colDef?.cellType === 'formula' || colDef?.cellType === 'lookup') {
+      res.status(400).json({ error: `Cannot edit ${colDef.cellType} column cells` });
       return;
     }
 
@@ -460,12 +561,16 @@ router.delete('/api/sheets/:id/rows', async (req: Request, res: Response) => {
 router.post('/api/sheets/:id/columns', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
-    const { name, cellType, width, options, formula } = req.body as {
+    const { name, cellType, width, options, formula, linkedSheetId, linkedDisplayColumn, lookupLinkedColumn, lookupReturnColumn } = req.body as {
       name: string;
       cellType: string;
       width?: number;
       options?: string[];
       formula?: string;
+      linkedSheetId?: string;
+      linkedDisplayColumn?: string;
+      lookupLinkedColumn?: string;
+      lookupReturnColumn?: string;
     };
 
     if (!name || !cellType) {
@@ -476,8 +581,8 @@ router.post('/api/sheets/:id/columns', async (req: Request, res: Response) => {
     const db = getDb();
     const tableName = safeTableName(id);
 
-    // Formula columns are virtual — skip physical column creation
-    if (cellType !== 'formula') {
+    // Virtual columns (formula, lookup) — skip physical column creation
+    if (cellType !== 'formula' && cellType !== 'lookup') {
       const safeName = name.replace(/"/g, '""');
       await db.run(`ALTER TABLE "${tableName}" ADD COLUMN "${safeName}" ${cellTypeToDuckDB(cellType)}`);
     }
@@ -499,6 +604,10 @@ router.post('/api/sheets/:id/columns', async (req: Request, res: Response) => {
     const newCol: Record<string, unknown> = { id: colId, name, cellType, width: width || 150 };
     if (options) newCol.options = options;
     if (formula) newCol.formula = formula;
+    if (linkedSheetId) newCol.linkedSheetId = linkedSheetId;
+    if (linkedDisplayColumn) newCol.linkedDisplayColumn = linkedDisplayColumn;
+    if (lookupLinkedColumn) newCol.lookupLinkedColumn = lookupLinkedColumn;
+    if (lookupReturnColumn) newCol.lookupReturnColumn = lookupReturnColumn;
     columns.push(newCol);
 
     const columnsJson = JSON.stringify(columns);
@@ -544,8 +653,8 @@ router.delete('/api/sheets/:id/columns/:columnId', async (req: Request, res: Res
       return;
     }
 
-    // Formula columns are virtual — skip physical column drop
-    if (col.cellType !== 'formula') {
+    // Virtual columns (formula, lookup) — skip physical column drop
+    if (col.cellType !== 'formula' && col.cellType !== 'lookup') {
       const colName = (col.name as string).replace(/"/g, '""');
       await db.run(`ALTER TABLE "${tableName}" DROP COLUMN "${colName}"`);
     }
@@ -572,7 +681,7 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
   try {
     const id = req.params.id as string;
     const columnId = req.params.columnId as string;
-    const { name: newName, cellType: newCellType, width: newWidth, options: newOptions, pinned: newPinned, conditionalFormats: newConditionalFormats, validationRules: newValidationRules, formula: newFormula } = req.body as {
+    const { name: newName, cellType: newCellType, width: newWidth, options: newOptions, pinned: newPinned, conditionalFormats: newConditionalFormats, validationRules: newValidationRules, formula: newFormula, linkedSheetId: newLinkedSheetId, linkedDisplayColumn: newLinkedDisplayColumn, lookupLinkedColumn: newLookupLinkedColumn, lookupReturnColumn: newLookupReturnColumn } = req.body as {
       name?: string;
       cellType?: string;
       width?: number;
@@ -581,6 +690,10 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
       conditionalFormats?: unknown[];
       validationRules?: unknown[];
       formula?: string;
+      linkedSheetId?: string;
+      linkedDisplayColumn?: string;
+      lookupLinkedColumn?: string;
+      lookupReturnColumn?: string;
     };
 
     const db = getDb();
@@ -608,9 +721,9 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
     const col = columns[colIndex];
     const oldName = col.name as string;
 
-    // Rename in DuckDB if name changed (skip for formula columns — they are virtual)
+    // Rename in DuckDB if name changed (skip for virtual columns)
     if (newName && newName !== oldName) {
-      if (col.cellType !== 'formula') {
+      if (col.cellType !== 'formula' && col.cellType !== 'lookup') {
         const safeOld = oldName.replace(/"/g, '""');
         const safeNew = newName.replace(/"/g, '""');
         await db.run(`ALTER TABLE "${tableName}" RENAME COLUMN "${safeOld}" TO "${safeNew}"`);
@@ -625,6 +738,10 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
     if (newConditionalFormats !== undefined) col.conditionalFormats = newConditionalFormats;
     if (newValidationRules !== undefined) col.validationRules = newValidationRules;
     if (newFormula !== undefined) col.formula = newFormula;
+    if (newLinkedSheetId !== undefined) col.linkedSheetId = newLinkedSheetId;
+    if (newLinkedDisplayColumn !== undefined) col.linkedDisplayColumn = newLinkedDisplayColumn;
+    if (newLookupLinkedColumn !== undefined) col.lookupLinkedColumn = newLookupLinkedColumn;
+    if (newLookupReturnColumn !== undefined) col.lookupReturnColumn = newLookupReturnColumn;
 
     columns[colIndex] = col;
     const columnsJson = JSON.stringify(columns);

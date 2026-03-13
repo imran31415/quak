@@ -58,7 +58,7 @@ export const api = {
       body: JSON.stringify({ rowIds }),
     }),
 
-  addColumn: (sheetId: string, column: { name: string; cellType: string; width?: number; options?: string[]; formula?: string }) =>
+  addColumn: (sheetId: string, column: { name: string; cellType: string; width?: number; options?: string[]; formula?: string; linkedSheetId?: string; linkedDisplayColumn?: string; lookupLinkedColumn?: string; lookupReturnColumn?: string }) =>
     request(`/sheets/${sheetId}/columns`, {
       method: 'POST',
       body: JSON.stringify(column),

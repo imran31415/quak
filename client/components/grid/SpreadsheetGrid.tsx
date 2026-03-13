@@ -86,12 +86,12 @@ function AddColumnHeaderComp(props: any) {
   );
 }
 
-function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, colName: string) => boolean, findHighlights?: FindMatch[], hasComment?: (rowId: number, colName: string) => boolean): ColDef[] {
+function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, colName: string) => boolean, findHighlights?: FindMatch[], hasComment?: (rowId: number, colName: string) => boolean, linkedRecordOptions?: Record<string, Array<{ rowid: number; displayValue: string }>>): ColDef[] {
   const highlightSet = findHighlights?.length
     ? new Set(findHighlights.map((m) => `${m.rowIndex}_${m.colName}`))
     : null;
   return columns.map((col) => {
-    const baseEditable = col.cellType !== 'checkbox' && col.cellType !== 'formula';
+    const baseEditable = col.cellType !== 'checkbox' && col.cellType !== 'formula' && col.cellType !== 'lookup';
     const def: ColDef = {
       field: col.name,
       headerName: col.name,
@@ -103,6 +103,9 @@ function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, 
       cellRendererSelector: (params: any) => {
         if (params.data?.__isSummaryRow) {
           return { component: renderers.text };
+        }
+        if (col.cellType === 'linked_record') {
+          return { component: renderers.linked_record, params: { cellType: col.cellType } };
         }
         return { component: renderers[col.cellType as CellType] || renderers.text, params: { cellType: col.cellType } };
       },
@@ -175,6 +178,30 @@ function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, 
       def.cellEditor = 'agTextCellEditor';
     }
 
+    if (col.cellType === 'linked_record' && linkedRecordOptions) {
+      const options = linkedRecordOptions[col.id] || [];
+      const refData: Record<string, string> = {};
+      for (const opt of options) {
+        refData[String(opt.rowid)] = opt.displayValue;
+      }
+      def.cellEditor = 'agSelectCellEditor';
+      def.cellEditorParams = { values: Object.keys(refData) };
+      def.refData = refData;
+      def.valueParser = (params) => {
+        const num = Number(params.newValue);
+        return isNaN(num) ? params.newValue : num;
+      };
+      def.valueFormatter = (params) => {
+        if (params.value === null || params.value === undefined) return '';
+        return refData[String(params.value)] || String(params.value);
+      };
+      (def as any)._colId = col.id;
+    }
+
+    if (col.cellType === 'lookup') {
+      (def as any)._colId = col.id;
+    }
+
     // Cell styling: conditional formatting + selection highlighting
     def.cellStyle = (params) => {
       let style: Record<string, string> = {};
@@ -212,7 +239,7 @@ function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, 
 
 export function SpreadsheetGrid() {
   const { meta, rows, updateCell } = useSheetData();
-  const { activeSheetId } = useSheetStore();
+  const { activeSheetId, linkedRecordOptions } = useSheetStore();
   const { resolvedTheme } = useTheme();
   const gridRef = useRef<AgGridReact>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -325,7 +352,7 @@ export function SpreadsheetGrid() {
       suppressMovable: true,
     };
 
-    let dataCols = getColDefs(meta.columns, isInSelection, findHighlights, commentHasComment);
+    let dataCols = getColDefs(meta.columns, isInSelection, findHighlights, commentHasComment, linkedRecordOptions);
 
     // Add grouping renderers when grouping is active
     if (groupByColumnId) {
@@ -333,7 +360,7 @@ export function SpreadsheetGrid() {
       const firstColField = groupCol?.name || meta.columns[0]?.name;
       dataCols = dataCols.map((def) => {
         const colConfig = meta.columns.find((c) => c.name === def.field);
-        const colEditable = colConfig ? colConfig.cellType !== 'checkbox' && colConfig.cellType !== 'formula' : true;
+        const colEditable = colConfig ? colConfig.cellType !== 'checkbox' && colConfig.cellType !== 'formula' && colConfig.cellType !== 'lookup' : true;
         return {
           ...def,
           cellRendererSelector: (params: any) => {
@@ -378,7 +405,7 @@ export function SpreadsheetGrid() {
     };
 
     return [dragCol, rowActionsCol, ...dataCols, addCol];
-  }, [meta, groupByColumnId, collapsedGroups, toggleGroupCollapse, isInSelection, findHighlights, commentHasComment]);
+  }, [meta, groupByColumnId, collapsedGroups, toggleGroupCollapse, isInSelection, findHighlights, commentHasComment, linkedRecordOptions]);
 
   const onCellValueChanged = useCallback((event: CellValueChangedEvent) => {
     if (event.rowIndex !== null && event.colDef.field && event.colDef.field !== '__actions' && event.colDef.field !== '__add_column') {

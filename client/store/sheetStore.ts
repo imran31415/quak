@@ -12,6 +12,7 @@ interface SheetState {
   activeSheetId: string | null;
   activeSheetMeta: SheetMeta | null;
   rows: Record<string, unknown>[];
+  linkedRecordOptions: Record<string, Array<{ rowid: number; displayValue: string }>>;
   selectedRowIds: Set<number>;
   loading: boolean;
   error: string | null;
@@ -24,7 +25,7 @@ interface SheetState {
   addRow: () => Promise<number | undefined>;
   deleteRow: (rowIndex: number) => void;
   deleteRows: (rowIndices: number[]) => void;
-  addColumn: (column: { name: string; cellType: string; width?: number; options?: string[]; formula?: string }) => Promise<void>;
+  addColumn: (column: { name: string; cellType: string; width?: number; options?: string[]; formula?: string; linkedSheetId?: string; linkedDisplayColumn?: string; lookupLinkedColumn?: string; lookupReturnColumn?: string }) => Promise<void>;
   deleteColumn: (columnId: string) => Promise<void>;
   renameColumn: (columnId: string, newName: string) => Promise<void>;
   bulkUpdateCells: (cells: Array<{ rowIndex: number; column: string; value: unknown }>) => void;
@@ -41,6 +42,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
   activeSheetId: null,
   activeSheetMeta: null,
   rows: [],
+  linkedRecordOptions: {},
   selectedRowIds: new Set(),
   loading: false,
   error: null,
@@ -70,10 +72,12 @@ export const useSheetStore = create<SheetState>((set, get) => ({
         ...r,
         __idx: r.rowid ?? i,
       }));
+      const linkedRecordOptions = (data as unknown as Record<string, unknown>).linkedRecordOptions as Record<string, Array<{ rowid: number; displayValue: string }>> || {};
       set({
         activeSheetId: id,
         activeSheetMeta: meta,
         rows,
+        linkedRecordOptions,
         loading: false,
       });
       localStorage.setItem('quak-active-sheet', id);
@@ -119,9 +123,11 @@ export const useSheetStore = create<SheetState>((set, get) => ({
       if (rowId !== undefined) {
         api.updateCell(activeSheetId, rowId, column, value)
           .then(() => {
-            // Reload to recalculate formula columns
-            const hasFormulas = activeSheetMeta?.columns.some((c) => c.cellType === 'formula');
-            if (hasFormulas) {
+            // Reload to recalculate computed columns (formula, linked_record display, lookup)
+            const needsReload = activeSheetMeta?.columns.some(
+              (c) => c.cellType === 'formula' || c.cellType === 'linked_record' || c.cellType === 'lookup'
+            );
+            if (needsReload) {
               get().loadSheet(activeSheetId);
             }
           })
@@ -165,7 +171,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
 
     const newRow: Record<string, unknown> = {};
     for (const col of activeSheetMeta.columns) {
-      if (col.cellType === 'formula') continue; // formula columns are computed server-side
+      if (col.cellType === 'formula' || col.cellType === 'lookup') continue; // virtual columns are computed server-side
       switch (col.cellType) {
         case 'checkbox':
           newRow[col.name] = false;
@@ -174,6 +180,7 @@ export const useSheetStore = create<SheetState>((set, get) => ({
           newRow[col.name] = 0;
           break;
         case 'date':
+        case 'linked_record':
           newRow[col.name] = null;
           break;
         default:

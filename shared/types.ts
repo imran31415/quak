@@ -8,6 +8,10 @@ export interface ColumnConfig {
   options?: string[];        // for dropdown
   format?: string;           // for number/date formatting
   formula?: string;          // for formula columns
+  linkedSheetId?: string;    // for linked_record: which sheet to link to
+  linkedDisplayColumn?: string; // for linked_record: which column to display
+  lookupLinkedColumn?: string;  // for lookup: which linked_record column to follow
+  lookupReturnColumn?: string;  // for lookup: which field to return
   pinned?: 'left' | null;
   conditionalFormats?: ConditionalFormatRule[];
   validationRules?: ValidationRule[];

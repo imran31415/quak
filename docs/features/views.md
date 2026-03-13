@@ -1,6 +1,6 @@
 # Multiple Views
 
-Quak supports five different ways to visualize your data. All views render from the same underlying sheet data — switch between them instantly without duplicating anything.
+Quak supports six different ways to visualize your data. All views render from the same underlying sheet data — switch between them instantly without duplicating anything.
 
 ## View Types
 
@@ -52,6 +52,23 @@ See [Pivot Tables](/features/pivot-tables) for full documentation.
 
 <img src="/screenshots/pivot-table.png" alt="Pivot table view" style="max-width: 800px; width: 100%; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.12);" />
 
+### Form View
+
+Auto-generates a submission form from a sheet's column schema. Has two faces:
+
+**In-app preview** — A view tab with a shareable link bar and live form preview. Submit the form to add a row directly.
+
+- Share bar with copyable form URL and "Open" link
+- Maps each column to the appropriate input (text, number, checkbox, dropdown, date, markdown textarea, linked record select)
+- Client-side validation from column `validationRules` (required, min/max value, min/max length, regex)
+- Success state with "Submit another" button
+
+<img src="/screenshots/form-view.png" alt="Form view" style="max-width: 800px; width: 100%; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.12);" />
+
+**Standalone page** — A public page at `/forms/:sheetId` with no app shell. Fetches only the schema (no row data), renders the form, and POSTs submissions. Formula and lookup columns are automatically excluded.
+
+<img src="/screenshots/form-standalone.png" alt="Standalone form page" style="max-width: 800px; width: 100%; border-radius: 8px; box-shadow: 0 4px 24px rgba(0,0,0,0.12);" />
+
 ## Switching Views
 
 Click the view buttons in the toolbar above the sheet content:
@@ -63,6 +80,7 @@ Click the view buttons in the toolbar above the sheet content:
 | Calendar | Calendar | Month grid from date columns |
 | Gallery | Gallery | Responsive card grid |
 | Pivot | Pivot | Cross-tabulation summary table |
+| Form | Form | Submission form with shareable link |
 
 ## Configuring Views
 
@@ -79,7 +97,7 @@ Your view choice and configuration are saved per-sheet in localStorage. When you
 
 ## Technical Details
 
-- Views are purely client-side — no server changes needed
+- Views are purely client-side — except Form view which uses `GET /api/sheets/:id/schema` for the standalone page
 - All views read from the same `sheetStore` data (rows and columns)
 - Kanban drag-and-drop uses the HTML5 native drag API
 - View state is stored in `uiStore` with Zustand persistence

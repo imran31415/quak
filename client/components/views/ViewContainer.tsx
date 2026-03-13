@@ -7,6 +7,7 @@ import { KanbanView } from './KanbanView';
 import { CalendarView } from './CalendarView';
 import { GalleryView } from './GalleryView';
 import { PivotView } from './PivotView';
+import { FormView } from './FormView';
 
 export function ViewContainer() {
   const activeSheetId = useSheetStore((s) => s.activeSheetId);
@@ -27,12 +28,13 @@ export function ViewContainer() {
           <ViewConfigPopover sheetId={activeSheetId} viewType={currentView} />
         )}
       </div>
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {currentView === 'grid' && <SpreadsheetGrid />}
         {currentView === 'kanban' && <KanbanView />}
         {currentView === 'calendar' && <CalendarView />}
         {currentView === 'gallery' && <GalleryView />}
         {currentView === 'pivot' && <PivotView />}
+        {currentView === 'form' && <FormView />}
       </div>
     </div>
   );

@@ -1,9 +1,41 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type ViewType = 'grid' | 'kanban' | 'calendar' | 'gallery' | 'pivot' | 'form';
+export type ViewType = 'grid' | 'kanban' | 'calendar' | 'gallery' | 'pivot' | 'form' | 'dashboard';
 
 export type AggregationType = 'SUM' | 'COUNT' | 'AVG' | 'MIN' | 'MAX';
+
+export type DashboardWidgetType = 'chart' | 'metric' | 'table';
+
+export interface DashboardChartConfig {
+  chartType: 'bar' | 'line' | 'pie';
+  xColumn: string;
+  yColumns: string[];
+}
+
+export interface DashboardMetricConfig {
+  column: string;
+  aggregation: AggregationType;
+}
+
+export interface DashboardTableConfig {
+  columns: string[];
+  limit: number;
+}
+
+export interface DashboardWidget {
+  id: string;
+  type: DashboardWidgetType;
+  title: string;
+  chartConfig?: DashboardChartConfig;
+  metricConfig?: DashboardMetricConfig;
+  tableConfig?: DashboardTableConfig;
+}
+
+export interface DashboardConfig {
+  widgets: DashboardWidget[];
+  columnCount: 1 | 2 | 3;
+}
 
 export interface PivotConfig {
   rowFieldIds: string[];
@@ -29,6 +61,7 @@ export interface ViewConfig {
   showTotals?: boolean;
   frozenRowIds?: number[];
   savedFilters?: SavedFilter[];
+  dashboardConfig?: DashboardConfig;
 }
 
 interface UIState {

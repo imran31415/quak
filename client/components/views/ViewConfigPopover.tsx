@@ -72,6 +72,26 @@ export function ViewConfigPopover({ sheetId, viewType }: ViewConfigPopoverProps)
           testId="gallery-column-select"
         />
       )}
+
+      {viewType === 'dashboard' && (
+        <div>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Column Count</label>
+          <select
+            value={config.dashboardConfig?.columnCount || 2}
+            onChange={(e) => {
+              const columnCount = Number(e.target.value) as 1 | 2 | 3;
+              const current = config.dashboardConfig || { widgets: [], columnCount: 2 as const };
+              setViewConfig(sheetId, { dashboardConfig: { ...current, columnCount } });
+            }}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            data-testid="dashboard-column-count"
+          >
+            <option value={1}>1 Column</option>
+            <option value={2}>2 Columns</option>
+            <option value={3}>3 Columns</option>
+          </select>
+        </div>
+      )}
     </div>
   );
 }

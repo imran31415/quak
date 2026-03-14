@@ -49,8 +49,7 @@ test.describe('SQL Query Panel', () => {
     const queryInput = page.getByTestId('query-input');
     await queryInput.fill('INVALID SQL QUERY');
     await page.getByTestId('run-query-btn').click();
-    await page.waitForTimeout(1000);
 
-    await expect(page.getByTestId('query-error')).toBeVisible();
+    await expect(page.getByTestId('query-error')).toBeVisible({ timeout: 10000 });
   });
 });

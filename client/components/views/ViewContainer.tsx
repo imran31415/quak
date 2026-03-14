@@ -8,6 +8,7 @@ import { CalendarView } from './CalendarView';
 import { GalleryView } from './GalleryView';
 import { PivotView } from './PivotView';
 import { FormView } from './FormView';
+import { DashboardView } from './DashboardView';
 
 export function ViewContainer() {
   const activeSheetId = useSheetStore((s) => s.activeSheetId);
@@ -35,6 +36,7 @@ export function ViewContainer() {
         {currentView === 'gallery' && <GalleryView />}
         {currentView === 'pivot' && <PivotView />}
         {currentView === 'form' && <FormView />}
+        {currentView === 'dashboard' && <DashboardView />}
       </div>
     </div>
   );

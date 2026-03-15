@@ -47,6 +47,18 @@ export function validateValue(
       }
       break;
     }
+    case 'file': {
+      const str = String(value);
+      try {
+        const parsed = JSON.parse(str);
+        if (!parsed.filename || !parsed.originalName) {
+          return { valid: false, error: 'Invalid file metadata' };
+        }
+      } catch {
+        return { valid: false, error: 'Invalid file metadata' };
+      }
+      break;
+    }
     case 'text':
     case 'markdown':
     case 'formula':

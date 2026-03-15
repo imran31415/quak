@@ -183,6 +183,9 @@ export const useSheetStore = create<SheetState>((set, get) => ({
         case 'linked_record':
           newRow[col.name] = null;
           break;
+        case 'file':
+          newRow[col.name] = '';
+          break;
         default:
           newRow[col.name] = '';
       }

@@ -3,12 +3,12 @@
 ## Tier 1 — Highest Impact
 
 ### 1. Working Formula Engine
-**Status:** Not Started
+**Status:** Done
 **Priority:** P0
 **Description:** Replace the stub `formulaEngine.ts` with a real formula evaluator. Support cell references (A1, B2), ranges (A1:A10), and common functions (SUM, AVG, COUNT, MIN, MAX, IF, VLOOKUP, CONCATENATE, etc.). Formulas should recalculate when dependent cells change.
 
 ### 2. Linked Records / Lookup Columns
-**Status:** Not Started
+**Status:** Done
 **Priority:** P0
 **Description:** New `linked_record` cell type that references rows from other sheets. A lookup column auto-pulls values from the linked sheet (like Airtable). Leverages DuckDB JOINs across sheet tables.
 
@@ -20,12 +20,12 @@
 ## Tier 2 — High Impact
 
 ### 4. Dashboard View
-**Status:** Not Started
+**Status:** Done
 **Priority:** P1
 **Description:** A 7th view type with drag-and-drop widgets (charts, KPIs, summary tables) powered by the SQL/DuckDB engine. Users visualize data without writing SQL.
 
 ### 5. Attachment / File Cells
-**Status:** Not Started
+**Status:** Done
 **Priority:** P1
 **Description:** New `file` cell type. Upload images, PDFs, documents to cells. Server stores files on disk. Cells show thumbnails/icons. Click to preview or download.
 

@@ -91,7 +91,7 @@ function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, 
     ? new Set(findHighlights.map((m) => `${m.rowIndex}_${m.colName}`))
     : null;
   return columns.map((col) => {
-    const baseEditable = col.cellType !== 'checkbox' && col.cellType !== 'formula' && col.cellType !== 'lookup';
+    const baseEditable = col.cellType !== 'checkbox' && col.cellType !== 'formula' && col.cellType !== 'lookup' && col.cellType !== 'file';
     const def: ColDef = {
       field: col.name,
       headerName: col.name,
@@ -155,6 +155,16 @@ function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, 
     } else if (col.cellType === 'checkbox') {
       def.filter = 'agTextColumnFilter';
       def.filterValueGetter = (params) => params.data?.[col.name] ? 'true' : 'false';
+    } else if (col.cellType === 'file') {
+      def.filter = 'agTextColumnFilter';
+      def.filterValueGetter = (params) => {
+        const val = params.data?.[col.name];
+        if (!val) return '';
+        try {
+          const meta = typeof val === 'string' ? JSON.parse(val) : val;
+          return meta?.originalName || '';
+        } catch { return ''; }
+      };
     } else {
       def.filter = 'agTextColumnFilter';
     }
@@ -360,7 +370,7 @@ export function SpreadsheetGrid() {
       const firstColField = groupCol?.name || meta.columns[0]?.name;
       dataCols = dataCols.map((def) => {
         const colConfig = meta.columns.find((c) => c.name === def.field);
-        const colEditable = colConfig ? colConfig.cellType !== 'checkbox' && colConfig.cellType !== 'formula' && colConfig.cellType !== 'lookup' : true;
+        const colEditable = colConfig ? colConfig.cellType !== 'checkbox' && colConfig.cellType !== 'formula' && colConfig.cellType !== 'lookup' && colConfig.cellType !== 'file' : true;
         return {
           ...def,
           cellRendererSelector: (params: any) => {

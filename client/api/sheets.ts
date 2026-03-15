@@ -1,4 +1,4 @@
-import type { SheetMeta, SheetData, QueryResult } from '@shared/types';
+import type { SheetMeta, SheetData, QueryResult, FileMetadata } from '@shared/types';
 
 const BASE = '/api';
 
@@ -132,4 +132,28 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ sql }),
     }),
+
+  uploadFile: async (file: File): Promise<FileMetadata> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${BASE}/uploads`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+
+  deleteFile: async (filename: string): Promise<void> => {
+    const res = await fetch(`${BASE}/uploads/${encodeURIComponent(filename)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+  },
 };

@@ -14,7 +14,7 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 - **Conditional formatting** — color-code cells based on value rules (equals, greater than, contains, etc.)
 - **Data validation** — enforce required fields, min/max values, regex patterns, and custom lists with visual feedback
 - **Row grouping** — group rows by any column with collapsible headers and automatic subtotals
-- **7 cell types** — text, numbers, checkboxes, dropdowns, date pickers, formulas, and markdown all in one sheet
+- **10 cell types** — text, numbers, checkboxes, dropdowns, date pickers, formulas, markdown, linked records, lookups, and file attachments all in one sheet
 - **In-browser SQL** — query your spreadsheet data with DuckDB-WASM, with syntax highlighting and query templates
 - **Charts** — visualize query results as bar, line, or pie charts
 - **Import & export** — drag-and-drop CSV, TSV, or JSON files; export as CSV or JSON
@@ -68,6 +68,14 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 ### Standalone Form Page
 
 ![Standalone Form](screenshots/form-standalone.png)
+
+### File Cells
+
+![File Cells](screenshots/file-cells.png)
+
+### File Preview
+
+![File Preview](screenshots/file-preview.png)
 
 ### Dark Mode
 
@@ -128,7 +136,7 @@ Then open http://localhost:5173 to browse the docs, including:
 - [Conditional Formatting](docs/features/conditional-formatting.md) — color-code cells by value
 - [Data Validation](docs/features/data-validation.md) — enforce data quality rules
 - [Row Grouping](docs/features/row-grouping.md) — group rows with subtotals
-- [Cell Types](docs/features/cell-types.md) — all 7 types with usage details
+- [Cell Types](docs/features/cell-types.md) — all 10 types with usage details
 - [SQL Queries](docs/features/sql-queries.md) — query panel, templates, and history
 - [Charts](docs/features/charts.md) — bar, line, and pie visualization
 - [Import & Export](docs/features/import-export.md) — file formats and type inference
@@ -171,6 +179,9 @@ quak/
 | Date | Native date picker |
 | Formula | Computed column with SQL expressions (fx badge) |
 | Markdown | Rich text with GFM support |
+| Linked Record | References rows from other sheets |
+| Lookup | Auto-pulls values from linked sheets |
+| File | Upload images, PDFs, and documents with preview |
 
 ## Testing
 

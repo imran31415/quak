@@ -55,6 +55,13 @@ export interface QueryResult {
   time: number;
 }
 
+export interface FileMetadata {
+  filename: string;
+  originalName: string;
+  mimetype: string;
+  size: number;
+}
+
 export interface ApiResponse<T> {
   data?: T;
   error?: string;

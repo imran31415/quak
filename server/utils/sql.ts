@@ -11,6 +11,7 @@ export function cellTypeToDuckDB(cellType: string): string {
       return 'DATE';
     case 'linked_record':
       return 'INTEGER';
+    case 'file':
     case 'text':
     case 'dropdown':
     case 'formula':

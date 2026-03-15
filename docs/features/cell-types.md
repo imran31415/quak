@@ -42,12 +42,32 @@ Rich text with GitHub Flavored Markdown support. Cells render:
 - GFM task checkboxes (`- [x] done`, `- [ ] todo`)
 - Links and images
 
+### Linked Record
+
+References a row from another sheet. When adding a linked record column, select the target sheet and the display column. Cells show a dropdown of available rows from the linked sheet. Stored as the linked row's ID (`INTEGER`).
+
+### Lookup
+
+Auto-pulls a value from a linked sheet. Select which linked record column to follow and which field to return. Lookup columns are read-only and computed automatically. Useful for displaying related data without duplicating it.
+
+### File
+
+Upload images, PDFs, and documents directly into cells. Supports jpg, png, gif, webp, pdf, doc, docx, xls, xlsx, csv, and txt files up to 10MB.
+
+- **Empty cells** show an upload prompt — click to open the file picker
+- **Image files** display a thumbnail and filename — click to open a preview modal with Download, Replace, and Remove actions
+- **Document files** display a file icon and filename — click to download
+
+![File Cells](../../screenshots/file-cells.png)
+
+![File Preview](../../screenshots/file-preview.png)
+
 ## Changing Column Types
 
 Right-click any column header (or click the menu icon) to:
 
 - **Rename** the column
-- **Change type** to any of the 7 types above
+- **Change type** to any of the 10 types above
 - **Delete** the column (with confirmation)
 
 When changing types, existing data is preserved where possible. For example, switching a text column containing "true"/"false" to checkbox will map the values correctly.
@@ -57,7 +77,7 @@ When changing types, existing data is preserved where possible. For example, swi
 Click the **+** button in the grid toolbar to add a new column. You'll be prompted for:
 
 1. **Column name**
-2. **Column type** (one of the 7 types above)
+2. **Column type** (one of the 10 types above)
 3. **Options** (for dropdown columns — comma-separated list)
 
 ## Summary Table
@@ -71,3 +91,6 @@ Click the **+** button in the grid toolbar to add a new column. You'll be prompt
 | Date | Date picker | Formatted date | `DATE` |
 | Formula | SQL expression (on column config) | Computed value with fx badge | Expression string |
 | Markdown | Free text (markdown syntax) | Rendered HTML | `VARCHAR` |
+| Linked Record | Select from linked sheet | Display column value | `INTEGER` |
+| Lookup | Automatic (read-only) | Value from linked sheet | Computed |
+| File | File picker (click cell) | Thumbnail or file icon | `VARCHAR` (JSON) |

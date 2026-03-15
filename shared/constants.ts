@@ -1,4 +1,4 @@
-export const CELL_TYPES = ['text', 'number', 'checkbox', 'dropdown', 'date', 'formula', 'markdown', 'linked_record', 'lookup'] as const;
+export const CELL_TYPES = ['text', 'number', 'checkbox', 'dropdown', 'date', 'formula', 'markdown', 'linked_record', 'lookup', 'file'] as const;
 
 export type CellType = (typeof CELL_TYPES)[number];
 
@@ -13,6 +13,15 @@ export const MARKDOWN_ROW_HEIGHT = 120;
 export const API_BASE = '/api';
 
 export const DEBOUNCE_MS = 500;
+
+export const FILE_MAX_SIZE = 10 * 1024 * 1024; // 10MB
+
+export const FILE_ACCEPTED_EXTENSIONS = [
+  '.jpg', '.jpeg', '.png', '.gif', '.webp',
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.csv', '.txt',
+] as const;
+
+export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
 
 export const FORMAT_COLORS = [
   { name: 'Red', bg: '#fecaca', text: '#991b1b', darkBg: '#7f1d1d', darkText: '#fca5a5' },

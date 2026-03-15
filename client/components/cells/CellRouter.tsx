@@ -8,6 +8,7 @@ import { MarkdownCell } from './MarkdownCell';
 import { FormulaCell } from './FormulaCell';
 import { LinkedRecordCell } from './LinkedRecordCell';
 import { LookupCell } from './LookupCell';
+import { FileCell } from './FileCell';
 import type { CellType } from '@shared/constants';
 
 const renderers: Record<CellType, React.ComponentType<ICellRendererParams>> = {
@@ -20,6 +21,7 @@ const renderers: Record<CellType, React.ComponentType<ICellRendererParams>> = {
   markdown: MarkdownCell,
   linked_record: LinkedRecordCell,
   lookup: LookupCell,
+  file: FileCell,
 };
 
 export function CellRouter(props: ICellRendererParams & { cellType?: CellType }) {

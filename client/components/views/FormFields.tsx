@@ -146,7 +146,7 @@ export function FormFields({ columns, linkedRecordOptions, onSubmit }: FormField
               <span className="text-red-500 ml-1">*</span>
             )}
           </label>
-          {renderField(col, values[col.name], handleChange, linkedRecordOptions)}
+          {renderField(col, values[col.name], handleChange, linkedRecordOptions, columns, values)}
           {errors[col.name] && (
             <p className="text-sm text-red-500" data-testid={`form-error-${col.id}`}>{errors[col.name]}</p>
           )}
@@ -168,7 +168,9 @@ function renderField(
   col: ColumnConfig,
   value: string | boolean,
   onChange: (colName: string, value: string | boolean) => void,
-  linkedRecordOptions?: Record<string, Array<{ rowid: number; displayValue: string }>>
+  linkedRecordOptions?: Record<string, Array<{ rowid: number; displayValue: string }>>,
+  allColumns?: ColumnConfig[],
+  formValues?: Record<string, string | boolean>
 ) {
   const inputClass = 'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none';
 
@@ -196,7 +198,17 @@ function renderField(
           />
         </div>
       );
-    case 'dropdown':
+    case 'dropdown': {
+      let dropdownOptions = col.options || [];
+      if (col.dependentOn && allColumns && formValues) {
+        const parentCol = allColumns.find((c) => c.id === col.dependentOn!.columnId);
+        if (parentCol) {
+          const parentValue = formValues[parentCol.name];
+          if (parentValue && typeof parentValue === 'string' && col.dependentOn.mapping[parentValue]) {
+            dropdownOptions = col.dependentOn.mapping[parentValue];
+          }
+        }
+      }
       return (
         <select
           value={value as string}
@@ -205,11 +217,12 @@ function renderField(
           data-testid={`form-field-${col.id}`}
         >
           <option value="">Select...</option>
-          {col.options?.map((opt) => (
+          {dropdownOptions.map((opt) => (
             <option key={opt} value={opt}>{opt}</option>
           ))}
         </select>
       );
+    }
     case 'date':
       return (
         <input

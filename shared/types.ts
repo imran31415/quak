@@ -15,6 +15,12 @@ export interface ColumnConfig {
   pinned?: 'left' | null;
   conditionalFormats?: ConditionalFormatRule[];
   validationRules?: ValidationRule[];
+  dependentOn?: DependentDropdownConfig;
+}
+
+export interface DependentDropdownConfig {
+  columnId: string;                   // parent dropdown column's ID
+  mapping: Record<string, string[]>;  // parentValue → childOptions
 }
 
 export type ConditionalOperator = 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'is_empty' | 'is_not_empty';

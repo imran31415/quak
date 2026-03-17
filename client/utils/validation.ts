@@ -1,16 +1,23 @@
 import type { CellType } from '@shared/constants';
-import type { ValidationRule } from '@shared/types';
+import type { ValidationRule, DependentDropdownConfig } from '@shared/types';
 
 export interface ValidationResult {
   valid: boolean;
   error?: string;
 }
 
+export interface DependentContext {
+  dependentOn: DependentDropdownConfig;
+  parentColumnName: string;
+  rowData: Record<string, unknown>;
+}
+
 export function validateValue(
   value: unknown,
   cellType: CellType,
   options?: string[],
-  validationRules?: ValidationRule[]
+  validationRules?: ValidationRule[],
+  dependentContext?: DependentContext
 ): ValidationResult {
   const hasRequired = validationRules?.some((r) => r.type === 'required');
 
@@ -42,8 +49,15 @@ export function validateValue(
       break;
     }
     case 'dropdown': {
-      if (options && options.length > 0 && !options.includes(String(value))) {
-        return { valid: false, error: `Must be one of: ${options.join(', ')}` };
+      let effectiveOptions = options;
+      if (dependentContext) {
+        const parentValue = dependentContext.rowData?.[dependentContext.parentColumnName];
+        if (parentValue && typeof parentValue === 'string' && dependentContext.dependentOn.mapping[parentValue]) {
+          effectiveOptions = dependentContext.dependentOn.mapping[parentValue];
+        }
+      }
+      if (effectiveOptions && effectiveOptions.length > 0 && !effectiveOptions.includes(String(value))) {
+        return { valid: false, error: `Must be one of: ${effectiveOptions.join(', ')}` };
       }
       break;
     }

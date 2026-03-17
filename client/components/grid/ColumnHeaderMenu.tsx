@@ -5,7 +5,9 @@ import type { CellType } from '@shared/constants';
 import type { ConditionalFormatRule, ValidationRule } from '@shared/types';
 import { ConditionalFormatPanel } from './ConditionalFormatPanel';
 import { ValidationRulesPanel } from './ValidationRulesPanel';
+import { DependentDropdownPanel } from './DependentDropdownPanel';
 import { useUIStore } from '../../store/uiStore';
+import type { ColumnConfig, DependentDropdownConfig } from '@shared/types';
 
 interface ColumnHeaderMenuProps {
   columnId: string;
@@ -15,9 +17,12 @@ interface ColumnHeaderMenuProps {
   formula?: string;
   conditionalFormats?: ConditionalFormatRule[];
   validationRules?: ValidationRule[];
+  options?: string[];
+  dependentOn?: DependentDropdownConfig;
+  allColumns?: ColumnConfig[];
 }
 
-export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, formula, conditionalFormats, validationRules }: ColumnHeaderMenuProps) {
+export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, formula, conditionalFormats, validationRules, options, dependentOn, allColumns }: ColumnHeaderMenuProps) {
   const [open, setOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState(columnName);
@@ -26,6 +31,7 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, formu
   const [newFormula, setNewFormula] = useState(formula || '');
   const [showConditionalFormat, setShowConditionalFormat] = useState(false);
   const [showValidationRules, setShowValidationRules] = useState(false);
+  const [showDependentDropdown, setShowDependentDropdown] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { renameColumn, deleteColumn, updateColumnConfig, loadSheet } = useSheetStore();
 
@@ -38,11 +44,12 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, formu
         setEditingFormula(false);
         setShowConditionalFormat(false);
         setShowValidationRules(false);
+        setShowDependentDropdown(false);
       }
     }
-    if (open || showConditionalFormat || showValidationRules) document.addEventListener('mousedown', handleClickOutside);
+    if (open || showConditionalFormat || showValidationRules || showDependentDropdown) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [open, showConditionalFormat, showValidationRules]);
+  }, [open, showConditionalFormat, showValidationRules, showDependentDropdown]);
 
   const handleRename = async () => {
     if (newName.trim() && newName !== columnName) {
@@ -186,6 +193,15 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, formu
               >
                 Validation Rules
               </button>
+              {cellType === 'dropdown' && (
+                <button
+                  onClick={() => { setOpen(false); setShowDependentDropdown(true); }}
+                  className="w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200"
+                  data-testid="dependent-dropdown-btn"
+                >
+                  Dependent Dropdown
+                </button>
+              )}
               {cellType === 'formula' && (
                 <button
                   onClick={() => { setEditingFormula(true); setNewFormula(formula || ''); }}
@@ -246,6 +262,19 @@ export function ColumnHeaderMenu({ columnId, columnName, cellType, pinned, formu
             setShowValidationRules(false);
           }}
           onClose={() => setShowValidationRules(false)}
+        />
+      )}
+      {showDependentDropdown && allColumns && (
+        <DependentDropdownPanel
+          columns={allColumns}
+          currentColumnId={columnId}
+          dependentOn={dependentOn}
+          options={options}
+          onSave={async (config) => {
+            await updateColumnConfig(columnId, { dependentOn: config ?? null } as any);
+            setShowDependentDropdown(false);
+          }}
+          onClose={() => setShowDependentDropdown(false)}
         />
       )}
     </div>

@@ -745,7 +745,7 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
   try {
     const id = req.params.id as string;
     const columnId = req.params.columnId as string;
-    const { name: newName, cellType: newCellType, width: newWidth, options: newOptions, pinned: newPinned, conditionalFormats: newConditionalFormats, validationRules: newValidationRules, formula: newFormula, linkedSheetId: newLinkedSheetId, linkedDisplayColumn: newLinkedDisplayColumn, lookupLinkedColumn: newLookupLinkedColumn, lookupReturnColumn: newLookupReturnColumn } = req.body as {
+    const { name: newName, cellType: newCellType, width: newWidth, options: newOptions, pinned: newPinned, conditionalFormats: newConditionalFormats, validationRules: newValidationRules, formula: newFormula, linkedSheetId: newLinkedSheetId, linkedDisplayColumn: newLinkedDisplayColumn, lookupLinkedColumn: newLookupLinkedColumn, lookupReturnColumn: newLookupReturnColumn, dependentOn: newDependentOn } = req.body as {
       name?: string;
       cellType?: string;
       width?: number;
@@ -758,6 +758,7 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
       linkedDisplayColumn?: string;
       lookupLinkedColumn?: string;
       lookupReturnColumn?: string;
+      dependentOn?: { columnId: string; mapping: Record<string, string[]> } | null;
     };
 
     const db = getDb();
@@ -806,6 +807,13 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
     if (newLinkedDisplayColumn !== undefined) col.linkedDisplayColumn = newLinkedDisplayColumn;
     if (newLookupLinkedColumn !== undefined) col.lookupLinkedColumn = newLookupLinkedColumn;
     if (newLookupReturnColumn !== undefined) col.lookupReturnColumn = newLookupReturnColumn;
+    if (newDependentOn !== undefined) {
+      if (newDependentOn === null) {
+        delete col.dependentOn;
+      } else {
+        col.dependentOn = newDependentOn;
+      }
+    }
 
     columns[colIndex] = col;
     const columnsJson = JSON.stringify(columns);

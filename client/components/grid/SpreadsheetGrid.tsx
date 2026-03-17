@@ -32,7 +32,7 @@ import { useCommentStore } from '../../store/commentStore';
 import { AuditLogPanel } from './AuditLogPanel';
 import { ColumnHeaderMenu } from './ColumnHeaderMenu';
 import { DatePickerEditor } from '../cells/DatePickerEditor';
-import { validateValue } from '../../utils/validation';
+import { validateValue, type DependentContext } from '../../utils/validation';
 import { evaluateRules } from '../../utils/conditionalFormat';
 import { buildGroupedRows } from '../../utils/grouping';
 import { buildSummaryRow } from '../../utils/summaryRow';
@@ -69,6 +69,9 @@ function DataColumnHeader(props: any) {
         formula={colConfig.formula}
         conditionalFormats={colConfig.conditionalFormats}
         validationRules={colConfig.validationRules}
+        options={colConfig.options}
+        dependentOn={colConfig.dependentOn}
+        allColumns={props.allColumns}
       />
     </div>
   );
@@ -111,13 +114,20 @@ function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, 
       },
       cellRendererParams: { cellType: col.cellType },
       headerComponent: DataColumnHeader,
-      headerComponentParams: { colConfig: col },
+      headerComponentParams: { colConfig: col, allColumns: columns },
       pinned: col.pinned || undefined,
     };
 
     // Validation via valueSetter
     def.valueSetter = (params) => {
-      const result = validateValue(params.newValue, col.cellType as CellType, col.options, col.validationRules);
+      let depCtx: DependentContext | undefined;
+      if (col.dependentOn) {
+        const parentCol = columns.find((c) => c.id === col.dependentOn!.columnId);
+        if (parentCol) {
+          depCtx = { dependentOn: col.dependentOn, parentColumnName: parentCol.name, rowData: params.data };
+        }
+      }
+      const result = validateValue(params.newValue, col.cellType as CellType, col.options, col.validationRules, depCtx);
       if (!result.valid) {
         useToastStore.getState().addToast(`Invalid "${col.name}": ${result.error}`, 'error');
         return false;
@@ -134,15 +144,31 @@ function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, 
         return rowId !== undefined && hasComment(rowId, col.name);
       };
     }
-    if (col.validationRules?.length) {
-      classRules['validation-error'] = (params) => !validateValue(params.value, col.cellType as CellType, col.options, col.validationRules).valid;
+    if (col.validationRules?.length || col.dependentOn) {
+      classRules['validation-error'] = (params) => {
+        let depCtx: DependentContext | undefined;
+        if (col.dependentOn) {
+          const parentCol = columns.find((c) => c.id === col.dependentOn!.columnId);
+          if (parentCol) {
+            depCtx = { dependentOn: col.dependentOn, parentColumnName: parentCol.name, rowData: params.data };
+          }
+        }
+        return !validateValue(params.value, col.cellType as CellType, col.options, col.validationRules, depCtx).valid;
+      };
     }
     if (Object.keys(classRules).length > 0) {
       def.cellClassRules = classRules;
     }
-    if (col.validationRules?.length) {
+    if (col.validationRules?.length || col.dependentOn) {
       def.tooltipValueGetter = (params) => {
-        const result = validateValue(params.value, col.cellType as CellType, col.options, col.validationRules);
+        let depCtx: DependentContext | undefined;
+        if (col.dependentOn) {
+          const parentCol = columns.find((c) => c.id === col.dependentOn!.columnId);
+          if (parentCol) {
+            depCtx = { dependentOn: col.dependentOn, parentColumnName: parentCol.name, rowData: params.data };
+          }
+        }
+        const result = validateValue(params.value, col.cellType as CellType, col.options, col.validationRules, depCtx);
         return result.valid ? undefined : result.error;
       };
     }
@@ -171,7 +197,22 @@ function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, 
 
     if (col.cellType === 'dropdown' && col.options) {
       def.cellEditor = 'agSelectCellEditor';
-      def.cellEditorParams = { values: col.options };
+      if (col.dependentOn) {
+        const parentCol = columns.find((c) => c.id === col.dependentOn!.columnId);
+        if (parentCol) {
+          def.cellEditorParams = (params: any) => {
+            const parentValue = params.data?.[parentCol.name];
+            if (parentValue && col.dependentOn!.mapping[parentValue]) {
+              return { values: col.dependentOn!.mapping[parentValue] };
+            }
+            return { values: col.options };
+          };
+        } else {
+          def.cellEditorParams = { values: col.options };
+        }
+      } else {
+        def.cellEditorParams = { values: col.options };
+      }
     }
 
     if (col.cellType === 'date') {

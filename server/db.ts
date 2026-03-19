@@ -42,6 +42,19 @@ export async function initDb(): Promise<void> {
       created_at TIMESTAMP DEFAULT current_timestamp
     )
   `);
+
+  await connection.run(`
+    CREATE TABLE IF NOT EXISTS __quak_snapshots (
+      id VARCHAR PRIMARY KEY,
+      sheet_id VARCHAR NOT NULL,
+      version INTEGER NOT NULL,
+      label VARCHAR,
+      columns_json JSON NOT NULL,
+      rows_json JSON NOT NULL,
+      row_count INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT current_timestamp
+    )
+  `);
 }
 
 export function getDb() {

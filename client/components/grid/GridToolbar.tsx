@@ -27,6 +27,8 @@ export function GridToolbar({ onSearchToggle, searchOpen, gridRef }: GridToolbar
   const setViewConfig = useUIStore((s) => s.setViewConfig);
   const toggleAuditPanel = useUIStore((s) => s.toggleAuditPanel);
   const auditPanelOpen = useUIStore((s) => s.auditPanelOpen);
+  const toggleVersionPanel = useUIStore((s) => s.toggleVersionPanel);
+  const versionPanelOpen = useUIStore((s) => s.versionPanelOpen);
 
   if (!activeSheetMeta) return null;
 
@@ -143,6 +145,19 @@ export function GridToolbar({ onSearchToggle, searchOpen, gridRef }: GridToolbar
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+
+        {/* Version History */}
+        <button
+          onClick={toggleVersionPanel}
+          className={`p-1 rounded ${versionPanelOpen ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
+          title="Version history"
+          aria-label="Toggle version history"
+          data-testid="version-history-toggle"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
           </svg>
         </button>
 

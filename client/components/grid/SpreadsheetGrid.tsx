@@ -30,6 +30,8 @@ import { FindReplaceBar, type FindMatch } from './FindReplaceBar';
 import { CellCommentPopover } from './CellCommentPopover';
 import { useCommentStore } from '../../store/commentStore';
 import { AuditLogPanel } from './AuditLogPanel';
+import { VersionHistoryPanel } from './VersionHistoryPanel';
+import { SnapshotPreviewModal } from './SnapshotPreviewModal';
 import { ColumnHeaderMenu } from './ColumnHeaderMenu';
 import { DatePickerEditor } from '../cells/DatePickerEditor';
 import { validateValue, type DependentContext } from '../../utils/validation';
@@ -309,6 +311,8 @@ export function SpreadsheetGrid() {
   const commentHasComment = useCommentStore((s) => s.hasComment);
   const fetchComments = useCommentStore((s) => s.fetchComments);
   const auditPanelOpen = useUIStore((s) => s.auditPanelOpen);
+  const versionPanelOpen = useUIStore((s) => s.versionPanelOpen);
+  const [previewSnapshotId, setPreviewSnapshotId] = useState<string | null>(null);
   const undoPush = useUndoStore((s) => s.push);
   const viewConfigs = useUIStore((s) => s.viewConfigs);
   const groupByColumnId = activeSheetId ? viewConfigs[activeSheetId]?.groupByColumnId : undefined;
@@ -673,6 +677,19 @@ export function SpreadsheetGrid() {
       )}
       {auditPanelOpen && activeSheetId && (
         <AuditLogPanel sheetId={activeSheetId} />
+      )}
+      {versionPanelOpen && activeSheetId && (
+        <VersionHistoryPanel
+          sheetId={activeSheetId}
+          onPreview={(snapshotId) => setPreviewSnapshotId(snapshotId)}
+        />
+      )}
+      {previewSnapshotId && activeSheetId && (
+        <SnapshotPreviewModal
+          sheetId={activeSheetId}
+          snapshotId={previewSnapshotId}
+          onClose={() => setPreviewSnapshotId(null)}
+        />
       )}
     </div>
   );

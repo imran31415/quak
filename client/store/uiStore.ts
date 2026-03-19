@@ -75,6 +75,7 @@ interface UIState {
   viewConfigPopoverOpen: boolean;
   theme: 'light' | 'dark' | 'system';
   auditPanelOpen: boolean;
+  versionPanelOpen: boolean;
 
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
@@ -90,6 +91,7 @@ interface UIState {
   setViewConfigPopoverOpen: (open: boolean) => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   toggleAuditPanel: () => void;
+  toggleVersionPanel: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -105,6 +107,7 @@ export const useUIStore = create<UIState>()(
       viewConfigPopoverOpen: false,
       theme: 'system',
       auditPanelOpen: false,
+      versionPanelOpen: false,
 
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -131,7 +134,14 @@ export const useUIStore = create<UIState>()(
       getViewConfig: (sheetId) => get().viewConfigs[sheetId] || {},
       setViewConfigPopoverOpen: (open) => set({ viewConfigPopoverOpen: open }),
       setTheme: (theme) => set({ theme }),
-      toggleAuditPanel: () => set((s) => ({ auditPanelOpen: !s.auditPanelOpen })),
+      toggleAuditPanel: () => set((s) => ({
+        auditPanelOpen: !s.auditPanelOpen,
+        versionPanelOpen: !s.auditPanelOpen ? false : s.versionPanelOpen,
+      })),
+      toggleVersionPanel: () => set((s) => ({
+        versionPanelOpen: !s.versionPanelOpen,
+        auditPanelOpen: !s.versionPanelOpen ? false : s.auditPanelOpen,
+      })),
     }),
     {
       name: 'quak-ui-store',

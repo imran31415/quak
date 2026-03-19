@@ -110,6 +110,29 @@ export const api = {
   getAuditLog: (sheetId: string, limit = 50, offset = 0) =>
     request<Array<{ id: string; sheet_id: string; action: string; details: Record<string, unknown>; created_at: string }>>(`/sheets/${sheetId}/audit?limit=${limit}&offset=${offset}`),
 
+  // Snapshots
+  listSnapshots: (sheetId: string) =>
+    request<Array<{ id: string; version: number; label: string; row_count: number; created_at: string }>>(`/sheets/${sheetId}/snapshots`),
+
+  createSnapshot: (sheetId: string, label?: string) =>
+    request<{ id: string; version: number; label: string; row_count: number }>(`/sheets/${sheetId}/snapshots`, {
+      method: 'POST',
+      body: JSON.stringify({ label }),
+    }),
+
+  getSnapshot: (sheetId: string, snapshotId: string) =>
+    request<{ id: string; version: number; label: string; row_count: number; created_at: string; columns: unknown[]; rows: Record<string, unknown>[] }>(`/sheets/${sheetId}/snapshots/${snapshotId}`),
+
+  restoreSnapshot: (sheetId: string, snapshotId: string) =>
+    request<{ success: boolean; autoSaveVersion: number }>(`/sheets/${sheetId}/snapshots/${snapshotId}/restore`, {
+      method: 'POST',
+    }),
+
+  deleteSnapshot: (sheetId: string, snapshotId: string) =>
+    request<{ success: boolean }>(`/sheets/${sheetId}/snapshots/${snapshotId}`, {
+      method: 'DELETE',
+    }),
+
   importFile: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

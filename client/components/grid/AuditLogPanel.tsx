@@ -19,6 +19,8 @@ const ACTION_COLORS: Record<string, string> = {
   column_delete: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
   column_rename: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
   row_reorder: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+  snapshot_create: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
+  snapshot_restore: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -31,6 +33,8 @@ const ACTION_LABELS: Record<string, string> = {
   column_delete: 'Column deleted',
   column_rename: 'Column renamed',
   row_reorder: 'Rows reordered',
+  snapshot_create: 'Snapshot created',
+  snapshot_restore: 'Snapshot restored',
 };
 
 interface AuditLogPanelProps {
@@ -97,6 +101,12 @@ export function AuditLogPanel({ sheetId }: AuditLogPanelProps) {
     if (action === 'bulk_cell_update') {
       const count = (details.count as number) || 0;
       return `${count} cell(s)`;
+    }
+    if (action === 'snapshot_create') {
+      return `v${details.version}: ${details.label || ''}`;
+    }
+    if (action === 'snapshot_restore') {
+      return `Restored to v${details.version}: ${details.label || ''}`;
     }
     return JSON.stringify(details).slice(0, 80);
   };

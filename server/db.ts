@@ -55,6 +55,21 @@ export async function initDb(): Promise<void> {
       created_at TIMESTAMP DEFAULT current_timestamp
     )
   `);
+
+  await connection.run(`
+    CREATE TABLE IF NOT EXISTS __quak_cell_formats (
+      id VARCHAR PRIMARY KEY,
+      sheet_id VARCHAR NOT NULL,
+      row_id INTEGER NOT NULL,
+      col_name VARCHAR NOT NULL,
+      bold BOOLEAN DEFAULT FALSE,
+      italic BOOLEAN DEFAULT FALSE,
+      underline BOOLEAN DEFAULT FALSE,
+      strikethrough BOOLEAN DEFAULT FALSE,
+      text_color VARCHAR,
+      bg_color VARCHAR
+    )
+  `);
 }
 
 export function getDb() {

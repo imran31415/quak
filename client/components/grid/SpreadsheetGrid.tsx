@@ -29,6 +29,8 @@ import { AddColumnPanel } from './AddColumnPanel';
 import { FindReplaceBar, type FindMatch } from './FindReplaceBar';
 import { CellCommentPopover } from './CellCommentPopover';
 import { useCommentStore } from '../../store/commentStore';
+import { useCellFormatStore } from '../../store/cellFormatStore';
+import type { CellFormat } from '@shared/types';
 import { AuditLogPanel } from './AuditLogPanel';
 import { VersionHistoryPanel } from './VersionHistoryPanel';
 import { SnapshotPreviewModal } from './SnapshotPreviewModal';
@@ -91,7 +93,7 @@ function AddColumnHeaderComp(props: any) {
   );
 }
 
-function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, colName: string) => boolean, findHighlights?: FindMatch[], hasComment?: (rowId: number, colName: string) => boolean, linkedRecordOptions?: Record<string, Array<{ rowid: number; displayValue: string }>>): ColDef[] {
+function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, colName: string) => boolean, findHighlights?: FindMatch[], hasComment?: (rowId: number, colName: string) => boolean, linkedRecordOptions?: Record<string, Array<{ rowid: number; displayValue: string }>>, getCellFormat?: (rowId: number, colName: string) => CellFormat | undefined): ColDef[] {
   const highlightSet = findHighlights?.length
     ? new Set(findHighlights.map((m) => `${m.rowIndex}_${m.colName}`))
     : null;
@@ -266,6 +268,21 @@ function getColDefs(columns: ColumnConfig[], isInSelection?: (rowIndex: number, 
         if (cfStyle) style = { ...style, ...cfStyle };
       }
 
+      // Cell-level rich text formatting (overrides conditional format colors)
+      if (getCellFormat && params.data?.rowid !== undefined) {
+        const fmt = getCellFormat(params.data.rowid as number, col.name);
+        if (fmt) {
+          if (fmt.bold) style.fontWeight = 'bold';
+          if (fmt.italic) style.fontStyle = 'italic';
+          const decorations: string[] = [];
+          if (fmt.underline) decorations.push('underline');
+          if (fmt.strikethrough) decorations.push('line-through');
+          if (decorations.length > 0) style.textDecoration = decorations.join(' ');
+          if (fmt.textColor) style.color = fmt.textColor;
+          if (fmt.bgColor) style.backgroundColor = fmt.bgColor;
+        }
+      }
+
       // Find & Replace highlighting
       if (highlightSet && params.rowIndex !== null && highlightSet.has(`${params.rowIndex}_${col.name}`)) {
         style = {
@@ -310,6 +327,8 @@ export function SpreadsheetGrid() {
   } | null>(null);
   const commentHasComment = useCommentStore((s) => s.hasComment);
   const fetchComments = useCommentStore((s) => s.fetchComments);
+  const fetchCellFormats = useCellFormatStore((s) => s.fetchFormats);
+  const getCellFormat = useCellFormatStore((s) => s.getFormat);
   const auditPanelOpen = useUIStore((s) => s.auditPanelOpen);
   const versionPanelOpen = useUIStore((s) => s.versionPanelOpen);
   const [previewSnapshotId, setPreviewSnapshotId] = useState<string | null>(null);
@@ -330,10 +349,11 @@ export function SpreadsheetGrid() {
   useEffect(() => {
     if (activeSheetId) {
       fetchComments(activeSheetId);
+      fetchCellFormats(activeSheetId);
     }
-  }, [activeSheetId, fetchComments]);
+  }, [activeSheetId, fetchComments, fetchCellFormats]);
 
-  const { onCellClicked: clipboardCellClicked, isInSelection, selectionInfo } = useClipboard({
+  const { onCellClicked: clipboardCellClicked, isInSelection, selectionInfo, getSelectedCells, getAnchorCell } = useClipboard({
     gridRef,
     meta,
     rows,
@@ -407,7 +427,7 @@ export function SpreadsheetGrid() {
       suppressMovable: true,
     };
 
-    let dataCols = getColDefs(meta.columns, isInSelection, findHighlights, commentHasComment, linkedRecordOptions);
+    let dataCols = getColDefs(meta.columns, isInSelection, findHighlights, commentHasComment, linkedRecordOptions, getCellFormat);
 
     // Add grouping renderers when grouping is active
     if (groupByColumnId) {
@@ -460,7 +480,7 @@ export function SpreadsheetGrid() {
     };
 
     return [dragCol, rowActionsCol, ...dataCols, addCol];
-  }, [meta, groupByColumnId, collapsedGroups, toggleGroupCollapse, isInSelection, findHighlights, commentHasComment, linkedRecordOptions]);
+  }, [meta, groupByColumnId, collapsedGroups, toggleGroupCollapse, isInSelection, findHighlights, commentHasComment, linkedRecordOptions, getCellFormat]);
 
   const onCellValueChanged = useCallback((event: CellValueChangedEvent) => {
     if (event.rowIndex !== null && event.colDef.field && event.colDef.field !== '__actions' && event.colDef.field !== '__add_column') {
@@ -550,6 +570,16 @@ export function SpreadsheetGrid() {
     }
   }, []);
 
+  const selectedCells = useMemo(() => getSelectedCells(), [getSelectedCells, selectionInfo]);
+  const anchorCell = useMemo(() => getAnchorCell(), [getAnchorCell, selectionInfo]);
+  const anchorCellFormat = useMemo(
+    () => anchorCell ? getCellFormat(anchorCell.rowId, anchorCell.colName) : undefined,
+    [anchorCell, getCellFormat]
+  );
+  const handleFormatApplied = useCallback(() => {
+    gridRef.current?.api?.refreshCells({ force: true });
+  }, []);
+
   if (!meta) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400 dark:text-gray-500" data-testid="no-sheet">
@@ -567,6 +597,9 @@ export function SpreadsheetGrid() {
         onSearchToggle={handleSearchToggle}
         searchOpen={searchOpen}
         gridRef={gridRef}
+        selectedCells={selectedCells}
+        anchorCellFormat={anchorCellFormat}
+        onFormatApplied={handleFormatApplied}
       />
       {searchOpen && (
         <SearchBar

@@ -30,12 +30,12 @@
 **Description:** New `file` cell type. Upload images, PDFs, documents to cells. Server stores files on disk. Cells show thumbnails/icons. Click to preview or download.
 
 ### 6. Dependent Dropdowns
-**Status:** Not Started
+**Status:** Done
 **Priority:** P1
 **Description:** Dropdown column options that change based on another column's value (e.g., Country → City). Configuration via column settings specifying the parent column and value-to-options mapping.
 
 ### 7. Version History / Snapshots
-**Status:** Not Started
+**Status:** Done
 **Priority:** P1
 **Description:** Point-in-time snapshots users can browse and restore. Build on top of the existing audit log to reconstruct past states or store periodic snapshots.
 

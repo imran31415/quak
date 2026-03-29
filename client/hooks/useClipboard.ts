@@ -15,6 +15,7 @@ import { validateValue } from '../utils/validation';
 import { useSheetStore } from '../store/sheetStore';
 import { useUndoStore } from '../store/undoStore';
 import { useToastStore } from '../store/toastStore';
+import { useCellFormatStore } from '../store/cellFormatStore';
 
 interface UseClipboardOptions {
   gridRef: React.RefObject<AgGridReact | null>;
@@ -224,6 +225,66 @@ export function useClipboard({ gridRef, meta, rows }: UseClipboardOptions) {
         return;
       }
 
+      // Ctrl+B/I/U for formatting
+      if (isCtrlOrMeta && (e.key === 'b' || e.key === 'i' || e.key === 'u') && anchorRef.current) {
+        e.preventDefault();
+        const prop = e.key === 'b' ? 'bold' : e.key === 'i' ? 'italic' : 'underline';
+        const formatStore = useCellFormatStore.getState();
+        const range = rangeRef.current;
+        if (!range || !activeSheetId || columns.length === 0) return;
+
+        const anchor = anchorRef.current;
+        const anchorRowId = rows[anchor.rowIndex]?.rowid as number | undefined;
+        const anchorFmt = anchorRowId !== undefined ? formatStore.getFormat(anchorRowId, anchor.colId) : undefined;
+        const isActive = anchorFmt?.[prop];
+
+        const cells: Array<{ rowId: number; colName: string }> = [];
+        for (let r = range.startRow; r <= range.endRow; r++) {
+          const rowId = rows[r]?.rowid as number | undefined;
+          if (rowId === undefined) continue;
+          for (let c = range.startColIndex; c <= range.endColIndex; c++) {
+            cells.push({ rowId, colName: columns[c].name });
+          }
+        }
+        if (cells.length === 0) return;
+
+        const snapshot = cells.map((cell) => ({
+          rowId: cell.rowId,
+          colName: cell.colName,
+          oldFormat: formatStore.getFormat(cell.rowId, cell.colName) || null,
+        }));
+
+        const formats = cells.map((cell) => {
+          const existing = formatStore.getFormat(cell.rowId, cell.colName);
+          return {
+            rowId: cell.rowId,
+            colName: cell.colName,
+            bold: existing?.bold || false,
+            italic: existing?.italic || false,
+            underline: existing?.underline || false,
+            strikethrough: existing?.strikethrough || false,
+            textColor: existing?.textColor,
+            bgColor: existing?.bgColor,
+            [prop]: !isActive,
+          };
+        });
+
+        undoPush({
+          type: 'cell_format',
+          sheetId: activeSheetId,
+          payload: {
+            cells: snapshot.map((s, i) => ({
+              ...s,
+              newFormat: formats[i],
+            })),
+          },
+        });
+
+        formatStore.bulkUpsertFormats(activeSheetId, formats);
+        refreshCells();
+        return;
+      }
+
       if (e.shiftKey && !isCtrlOrMeta && anchorRef.current && focusRef.current) {
         const focus = focusRef.current;
         const colIdx = columns.findIndex((c) => c.name === focus.colId);
@@ -269,10 +330,34 @@ export function useClipboard({ gridRef, meta, rows }: UseClipboardOptions) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [columns, rows, clearSelection, handleCopy, handlePaste, updateRange, refreshCells]);
 
+  const getSelectedCells = useCallback((): Array<{ rowId: number; colName: string }> => {
+    const range = rangeRef.current;
+    if (!range || columns.length === 0) return [];
+    const cells: Array<{ rowId: number; colName: string }> = [];
+    for (let r = range.startRow; r <= range.endRow; r++) {
+      const rowId = rows[r]?.rowid as number | undefined;
+      if (rowId === undefined) continue;
+      for (let c = range.startColIndex; c <= range.endColIndex; c++) {
+        cells.push({ rowId, colName: columns[c].name });
+      }
+    }
+    return cells;
+  }, [columns, rows]);
+
+  const getAnchorCell = useCallback((): { rowId: number; colName: string } | null => {
+    const anchor = anchorRef.current;
+    if (!anchor) return null;
+    const rowId = rows[anchor.rowIndex]?.rowid as number | undefined;
+    if (rowId === undefined) return null;
+    return { rowId, colName: anchor.colId };
+  }, [rows]);
+
   return {
     onCellClicked,
     isInSelection,
     selectionInfo,
     clearSelection,
+    getSelectedCells,
+    getAnchorCell,
   };
 }

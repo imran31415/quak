@@ -9,6 +9,7 @@ import commentsRouter from './routes/comments.js';
 import auditRouter from './routes/audit.js';
 import snapshotsRouter from './routes/snapshots.js';
 import uploadsRouter from './routes/uploads.js';
+import cellFormatsRouter from './routes/cellFormats.js';
 
 const app = express();
 
@@ -24,5 +25,6 @@ app.use(commentsRouter);
 app.use(auditRouter);
 app.use(snapshotsRouter);
 app.use(uploadsRouter);
+app.use(cellFormatsRouter);
 
 export default app;

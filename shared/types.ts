@@ -68,6 +68,16 @@ export interface FileMetadata {
   size: number;
 }
 
+export interface CellFormat {
+  id: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  textColor?: string;
+  bgColor?: string;
+}
+
 export interface ApiResponse<T> {
   data?: T;
   error?: string;

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type UndoActionType = 'cell_edit' | 'cells_paste' | 'row_add' | 'row_delete' | 'rows_delete' | 'column_add' | 'column_delete' | 'column_rename' | 'row_reorder' | 'find_replace';
+export type UndoActionType = 'cell_edit' | 'cells_paste' | 'row_add' | 'row_delete' | 'rows_delete' | 'column_add' | 'column_delete' | 'column_rename' | 'row_reorder' | 'find_replace' | 'cell_format';
 
 export interface UndoAction {
   type: UndoActionType;

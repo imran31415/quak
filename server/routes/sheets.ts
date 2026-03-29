@@ -359,6 +359,9 @@ router.delete('/api/sheets/:id', async (req: Request, res: Response) => {
     // Remove metadata
     await db.run(`DELETE FROM __quak_sheets WHERE id = '${id.replace(/'/g, "''")}'`);
 
+    // Clean up cell formats
+    await db.run(`DELETE FROM __quak_cell_formats WHERE sheet_id = '${id.replace(/'/g, "''")}'`);
+
     res.json({ success: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';

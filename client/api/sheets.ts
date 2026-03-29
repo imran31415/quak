@@ -1,4 +1,4 @@
-import type { SheetMeta, SheetData, QueryResult, FileMetadata } from '@shared/types';
+import type { SheetMeta, SheetData, QueryResult, FileMetadata, CellFormat } from '@shared/types';
 
 const BASE = '/api';
 
@@ -105,6 +105,28 @@ export const api = {
 
   deleteComment: (sheetId: string, commentId: string) =>
     request(`/sheets/${sheetId}/comments/${commentId}`, { method: 'DELETE' }),
+
+  // Cell Formats
+  getCellFormats: (sheetId: string) =>
+    request<Array<{ id: string; sheet_id: string; row_id: number; col_name: string; bold: boolean; italic: boolean; underline: boolean; strikethrough: boolean; text_color: string | null; bg_color: string | null }>>(`/sheets/${sheetId}/cell-formats`),
+
+  upsertCellFormat: (sheetId: string, rowId: number, colName: string, format: Partial<CellFormat>) =>
+    request<{ id: string }>(`/sheets/${sheetId}/cell-formats`, {
+      method: 'PUT',
+      body: JSON.stringify({ rowId, colName, ...format }),
+    }),
+
+  bulkUpsertCellFormats: (sheetId: string, formats: Array<{ rowId: number; colName: string; bold?: boolean; italic?: boolean; underline?: boolean; strikethrough?: boolean; textColor?: string; bgColor?: string }>) =>
+    request<{ success: boolean; upserted: number }>(`/sheets/${sheetId}/cell-formats/bulk`, {
+      method: 'PUT',
+      body: JSON.stringify({ formats }),
+    }),
+
+  clearCellFormats: (sheetId: string, cells: Array<{ rowId: number; colName: string }>) =>
+    request<{ success: boolean }>(`/sheets/${sheetId}/cell-formats`, {
+      method: 'DELETE',
+      body: JSON.stringify({ cells }),
+    }),
 
   // Audit log
   getAuditLog: (sheetId: string, limit = 50, offset = 0) =>

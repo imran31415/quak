@@ -6,14 +6,19 @@ import { useRef, useState } from 'react';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import type { AgGridReact } from 'ag-grid-react';
 import { SavedFiltersMenu } from './SavedFiltersMenu';
+import { FormatToolbar } from './FormatToolbar';
+import type { CellFormat } from '@shared/types';
 
 interface GridToolbarProps {
   onSearchToggle: () => void;
   searchOpen: boolean;
   gridRef: React.RefObject<AgGridReact | null>;
+  selectedCells?: Array<{ rowId: number; colName: string }>;
+  anchorCellFormat?: CellFormat;
+  onFormatApplied?: () => void;
 }
 
-export function GridToolbar({ onSearchToggle, searchOpen, gridRef }: GridToolbarProps) {
+export function GridToolbar({ onSearchToggle, searchOpen, gridRef, selectedCells, anchorCellFormat, onFormatApplied }: GridToolbarProps) {
   const { activeSheetMeta, rows, addRow, selectedRowIds, deleteRows, clearSelection } = useSheetStore();
   const { past, future } = useUndoStore();
   const undo = useUndoStore((s) => s.undo);
@@ -103,6 +108,19 @@ export function GridToolbar({ onSearchToggle, searchOpen, gridRef }: GridToolbar
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a4 4 0 00-4 4v0a4 4 0 004 4h10m0-8l-4-4m4 4l-4 4" />
           </svg>
         </button>
+
+        {/* Format Toolbar */}
+        {selectedCells && selectedCells.length > 0 && activeSheetMeta && onFormatApplied && (
+          <>
+            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
+            <FormatToolbar
+              sheetId={activeSheetMeta.id}
+              selectedCells={selectedCells}
+              anchorCellFormat={anchorCellFormat}
+              onFormatApplied={onFormatApplied}
+            />
+          </>
+        )}
 
         <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
 

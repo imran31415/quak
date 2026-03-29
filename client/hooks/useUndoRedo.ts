@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useUndoStore } from '../store/undoStore';
 import { useSheetStore } from '../store/sheetStore';
+import { useCellFormatStore } from '../store/cellFormatStore';
 import { api } from '../api/sheets';
 
 export function useUndoRedo() {
@@ -78,6 +79,30 @@ function applyUndo(action: ReturnType<typeof useUndoStore.getState>['past'][0]) 
       store.bulkUpdateCells(restoreUpdates);
       break;
     }
+    case 'cell_format': {
+      const formatStore = useCellFormatStore.getState();
+      const cells = p.cells as Array<{ rowId: number; colName: string; oldFormat: Record<string, unknown> | null; newFormat: Record<string, unknown> | null }>;
+      if (store.activeSheetId) {
+        const toRestore = cells.filter((c) => c.oldFormat);
+        const toClear = cells.filter((c) => !c.oldFormat);
+        if (toRestore.length > 0) {
+          formatStore.bulkUpsertFormats(store.activeSheetId, toRestore.map((c) => ({
+            rowId: c.rowId,
+            colName: c.colName,
+            bold: !!c.oldFormat!.bold,
+            italic: !!c.oldFormat!.italic,
+            underline: !!c.oldFormat!.underline,
+            strikethrough: !!c.oldFormat!.strikethrough,
+            textColor: c.oldFormat!.textColor as string | undefined,
+            bgColor: c.oldFormat!.bgColor as string | undefined,
+          })));
+        }
+        if (toClear.length > 0) {
+          formatStore.clearFormats(store.activeSheetId, toClear.map((c) => ({ rowId: c.rowId, colName: c.colName })));
+        }
+      }
+      break;
+    }
     default:
       // For column operations, just reload the sheet
       if (store.activeSheetId) {
@@ -127,6 +152,30 @@ function applyRedo(action: ReturnType<typeof useUndoStore.getState>['past'][0]) 
       const cells = p.cells as Array<{ rowIndex: number; column: string; oldValue: unknown; newValue: unknown }>;
       const redoUpdates = cells.map((c) => ({ rowIndex: c.rowIndex, column: c.column, value: c.newValue }));
       store.bulkUpdateCells(redoUpdates);
+      break;
+    }
+    case 'cell_format': {
+      const formatStore = useCellFormatStore.getState();
+      const cells = p.cells as Array<{ rowId: number; colName: string; oldFormat: Record<string, unknown> | null; newFormat: Record<string, unknown> | null }>;
+      if (store.activeSheetId) {
+        const toApply = cells.filter((c) => c.newFormat);
+        const toClear = cells.filter((c) => !c.newFormat);
+        if (toApply.length > 0) {
+          formatStore.bulkUpsertFormats(store.activeSheetId, toApply.map((c) => ({
+            rowId: c.rowId,
+            colName: c.colName,
+            bold: !!c.newFormat!.bold,
+            italic: !!c.newFormat!.italic,
+            underline: !!c.newFormat!.underline,
+            strikethrough: !!c.newFormat!.strikethrough,
+            textColor: c.newFormat!.textColor as string | undefined,
+            bgColor: c.newFormat!.bgColor as string | undefined,
+          })));
+        }
+        if (toClear.length > 0) {
+          formatStore.clearFormats(store.activeSheetId, toClear.map((c) => ({ rowId: c.rowId, colName: c.colName })));
+        }
+      }
       break;
     }
     default:

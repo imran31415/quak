@@ -42,12 +42,12 @@
 ## Tier 3 — Polish & Extensibility
 
 ### 8. Cell Rich Text Formatting
-**Status:** Not Started
+**Status:** Done
 **Priority:** P2
 **Description:** Per-cell bold, italic, font color, background color (beyond conditional formatting). Store formatting metadata alongside cell values.
 
 ### 9. Webhooks & REST API Keys
-**Status:** Not Started
+**Status:** Done
 **Priority:** P2
 **Description:** Authenticated REST API for external access. Webhook triggers on data changes (row added, cell updated, etc.). Enables integrations with Zapier, n8n, custom scripts.
 

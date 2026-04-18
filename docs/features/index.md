@@ -12,7 +12,7 @@ Quak combines a traditional spreadsheet grid with SQL-powered data capabilities.
 | [Data Validation](/features/data-validation) | Enforce required, min/max, regex rules with visual feedback |
 | [Row Grouping](/features/row-grouping) | Group rows by column with collapsible headers and subtotals |
 | [Multiple Views](/features/views) | Grid, Kanban, Calendar, Gallery, Pivot, and Form views over the same data |
-| [Cell Types](/features/cell-types) | 7 types — text, number, checkbox, dropdown, date, formula, markdown |
+| [Cell Types](/features/cell-types) | 10 types — text, number, checkbox, dropdown, date, formula, markdown, linked record, lookup, file |
 | [SQL Queries](/features/sql-queries) | In-browser SQL via DuckDB-WASM with syntax highlighting |
 | [Charts](/features/charts) | Bar, line, and pie charts from query results |
 | [Import & Export](/features/import-export) | Drag-and-drop CSV/TSV/JSON import, CSV/JSON export |
@@ -22,6 +22,9 @@ Quak combines a traditional spreadsheet grid with SQL-powered data capabilities.
 | [Keyboard Shortcuts](/features/keyboard-shortcuts) | Quick access to all major operations |
 | [Dark Mode](/features/dark-mode) | Light, dark, and system theme with smooth transitions |
 | [Responsive Design](/features/responsive-design) | Mobile-first layout with bottom navigation |
+| [Version History](/features/version-history) | Point-in-time snapshots with browse, preview, and restore |
+| [Cell Formatting](/features/cell-formatting) | Per-cell bold, italic, underline, strikethrough, text/bg color |
+| [Webhooks & API](/features/webhooks-api) | REST API keys and webhook notifications on data changes |
 
 ## Screenshots
 

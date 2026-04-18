@@ -34,6 +34,7 @@ import type { CellFormat } from '@shared/types';
 import { AuditLogPanel } from './AuditLogPanel';
 import { VersionHistoryPanel } from './VersionHistoryPanel';
 import { SnapshotPreviewModal } from './SnapshotPreviewModal';
+import { SettingsPanel } from '../settings/SettingsPanel';
 import { ColumnHeaderMenu } from './ColumnHeaderMenu';
 import { DatePickerEditor } from '../cells/DatePickerEditor';
 import { validateValue, type DependentContext } from '../../utils/validation';
@@ -331,6 +332,7 @@ export function SpreadsheetGrid() {
   const getCellFormat = useCellFormatStore((s) => s.getFormat);
   const auditPanelOpen = useUIStore((s) => s.auditPanelOpen);
   const versionPanelOpen = useUIStore((s) => s.versionPanelOpen);
+  const settingsPanelOpen = useUIStore((s) => s.settingsPanelOpen);
   const [previewSnapshotId, setPreviewSnapshotId] = useState<string | null>(null);
   const undoPush = useUndoStore((s) => s.push);
   const viewConfigs = useUIStore((s) => s.viewConfigs);
@@ -724,6 +726,7 @@ export function SpreadsheetGrid() {
           onClose={() => setPreviewSnapshotId(null)}
         />
       )}
+      {settingsPanelOpen && <SettingsPanel />}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { SheetMeta, SheetData, QueryResult, FileMetadata, CellFormat } from '@shared/types';
+import type { SheetMeta, SheetData, QueryResult, FileMetadata, CellFormat, ApiKey, Webhook } from '@shared/types';
 
 const BASE = '/api';
 
@@ -201,4 +201,41 @@ export const api = {
       throw new Error(body.error || `HTTP ${res.status}`);
     }
   },
+
+  // API Keys
+  listApiKeys: () =>
+    request<ApiKey[]>('/api-keys'),
+
+  createApiKey: (name: string) =>
+    request<ApiKey & { key: string }>('/api-keys', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  deleteApiKey: (id: string) =>
+    request<{ success: boolean }>(`/api-keys/${id}`, { method: 'DELETE' }),
+
+  // Webhooks
+  listWebhooks: () =>
+    request<Webhook[]>('/webhooks'),
+
+  createWebhook: (data: { name: string; url: string; sheetId: string; events: string[]; secret?: string }) =>
+    request<Webhook>('/webhooks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateWebhook: (id: string, data: Partial<Webhook>) =>
+    request<{ success: boolean }>(`/webhooks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteWebhook: (id: string) =>
+    request<{ success: boolean }>(`/webhooks/${id}`, { method: 'DELETE' }),
+
+  testWebhook: (id: string) =>
+    request<{ success: boolean; status: number; statusText: string }>(`/webhooks/${id}/test`, {
+      method: 'POST',
+    }),
 };

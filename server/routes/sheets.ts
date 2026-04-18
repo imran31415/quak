@@ -4,6 +4,7 @@ import { getDb } from '../db.js';
 import { batchInsert } from '../utils/batchInsert.js';
 import { cellTypeToDuckDB, safeTableName, formatValue } from '../utils/sql.js';
 import { logAudit } from '../utils/auditLog.js';
+import { dispatchWebhook } from '../utils/webhookDispatcher.js';
 
 const router = Router();
 
@@ -337,6 +338,8 @@ router.put('/api/sheets/:id', async (req: Request, res: Response) => {
       `UPDATE __quak_sheets SET ${updates.join(', ')} WHERE id = '${id.replace(/'/g, "''")}'`
     );
 
+    dispatchWebhook(id, 'sheet_updated', { name, columnsUpdated: columns !== undefined });
+
     res.json({ id, name, columns });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -361,6 +364,9 @@ router.delete('/api/sheets/:id', async (req: Request, res: Response) => {
 
     // Clean up cell formats
     await db.run(`DELETE FROM __quak_cell_formats WHERE sheet_id = '${id.replace(/'/g, "''")}'`);
+
+    // Clean up webhooks
+    await db.run(`DELETE FROM __quak_webhooks WHERE sheet_id = '${id.replace(/'/g, "''")}'`);
 
     res.json({ success: true });
   } catch (err: unknown) {
@@ -469,6 +475,7 @@ router.post('/api/sheets/:id/rows', async (req: Request, res: Response) => {
     const lastRowid = (lastRowRows[0] as Record<string, unknown>)?.last_rowid;
 
     logAudit(id, 'row_add', { rowId: lastRowid });
+    dispatchWebhook(id, 'row_added', { rowId: lastRowid });
     res.status(201).json({ success: true, rowid: lastRowid });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -528,6 +535,7 @@ router.put('/api/sheets/:id/cells', async (req: Request, res: Response) => {
     );
 
     logAudit(id, 'cell_update', { rowId: rowIndex, column, value });
+    dispatchWebhook(id, 'cell_updated', { rowId: rowIndex, column, value });
 
     res.json({ success: true });
   } catch (err: unknown) {
@@ -586,6 +594,7 @@ router.put('/api/sheets/:id/cells/bulk', async (req: Request, res: Response) => 
     }
 
     logAudit(id, 'bulk_cell_update', { count: updated });
+    dispatchWebhook(id, 'cell_updated', { count: updated });
 
     res.json({ success: true, updated });
   } catch (err: unknown) {
@@ -614,6 +623,7 @@ router.delete('/api/sheets/:id/rows', async (req: Request, res: Response) => {
     await db.run(`DELETE FROM "${tableName}" WHERE rowid IN (${idList})`);
 
     logAudit(id, 'rows_delete', { rowIds });
+    dispatchWebhook(id, 'row_deleted', { rowIds });
 
     res.json({ success: true, deleted: rowIds.length });
   } catch (err: unknown) {

@@ -46,6 +46,9 @@ export default defineConfig({
           { text: 'Keyboard Shortcuts', link: '/features/keyboard-shortcuts' },
           { text: 'Dark Mode', link: '/features/dark-mode' },
           { text: 'Responsive Design', link: '/features/responsive-design' },
+          { text: 'Version History', link: '/features/version-history' },
+          { text: 'Cell Formatting', link: '/features/cell-formatting' },
+          { text: 'Webhooks & API', link: '/features/webhooks-api' },
         ],
       },
       {

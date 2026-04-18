@@ -24,6 +24,10 @@ A spreadsheet application powered by DuckDB, where cells can contain both data a
 - **Sheet templates** — Task Tracker, Budget, and custom templates to start fast
 - **Dark mode** — three-state theme toggle (light/dark/system) with smooth transitions, FOUC prevention, and AG Grid theme switching
 - **Keyboard shortcuts** — Ctrl+Z/Y, Ctrl+F, Ctrl+Enter, and more
+- **Dependent dropdowns** — dropdown options change based on another column's value (e.g., Country → City)
+- **Version history** — point-in-time snapshots with browse, preview, and one-click restore
+- **Cell formatting** — per-cell bold, italic, underline, strikethrough, text color, and background color
+- **Webhooks & API keys** — authenticated REST API for external access, webhook triggers on data mutations (row added, cell updated, etc.)
 - **Responsive** — mobile-friendly layout with bottom navigation, AI button, and slide-over sidebar
 
 <details>
@@ -143,6 +147,9 @@ Then open http://localhost:5173 to browse the docs, including:
 - [Search & Filtering](docs/features/search-filtering.md) — search, filters, and sorting
 - [AI Chat Assistant](docs/features/ai-chat.md) — natural-language data management with tool calling
 - [Dark Mode](docs/features/dark-mode.md) — light, dark, and system theme with smooth transitions
+- [Version History](docs/features/version-history.md) — snapshots, preview, and restore
+- [Cell Formatting](docs/features/cell-formatting.md) — per-cell rich text formatting
+- [Webhooks & API](docs/features/webhooks-api.md) — REST API keys and webhook integrations
 - [Architecture](docs/architecture.md) — dual-DuckDB architecture and data flow
 
 ## Project Structure

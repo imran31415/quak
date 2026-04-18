@@ -57,6 +57,30 @@ export async function initDb(): Promise<void> {
   `);
 
   await connection.run(`
+    CREATE TABLE IF NOT EXISTS __quak_api_keys (
+      id VARCHAR PRIMARY KEY,
+      name VARCHAR NOT NULL,
+      key_hash VARCHAR NOT NULL,
+      key_prefix VARCHAR NOT NULL,
+      created_at TIMESTAMP DEFAULT current_timestamp,
+      last_used_at TIMESTAMP
+    )
+  `);
+
+  await connection.run(`
+    CREATE TABLE IF NOT EXISTS __quak_webhooks (
+      id VARCHAR PRIMARY KEY,
+      name VARCHAR NOT NULL,
+      url VARCHAR NOT NULL,
+      sheet_id VARCHAR NOT NULL,
+      events JSON NOT NULL,
+      active BOOLEAN DEFAULT TRUE,
+      secret VARCHAR,
+      created_at TIMESTAMP DEFAULT current_timestamp
+    )
+  `);
+
+  await connection.run(`
     CREATE TABLE IF NOT EXISTS __quak_cell_formats (
       id VARCHAR PRIMARY KEY,
       sheet_id VARCHAR NOT NULL,

@@ -78,6 +78,25 @@ export interface CellFormat {
   bgColor?: string;
 }
 
+export interface ApiKey {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  createdAt: string;
+  lastUsedAt?: string;
+}
+
+export interface Webhook {
+  id: string;
+  name: string;
+  url: string;
+  sheetId: string;
+  events: string[];
+  active: boolean;
+  secret?: string;
+  createdAt: string;
+}
+
 export interface ApiResponse<T> {
   data?: T;
   error?: string;

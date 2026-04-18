@@ -76,6 +76,7 @@ interface UIState {
   theme: 'light' | 'dark' | 'system';
   auditPanelOpen: boolean;
   versionPanelOpen: boolean;
+  settingsPanelOpen: boolean;
 
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
@@ -92,6 +93,7 @@ interface UIState {
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   toggleAuditPanel: () => void;
   toggleVersionPanel: () => void;
+  toggleSettingsPanel: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -108,6 +110,7 @@ export const useUIStore = create<UIState>()(
       theme: 'system',
       auditPanelOpen: false,
       versionPanelOpen: false,
+      settingsPanelOpen: false,
 
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
@@ -137,10 +140,17 @@ export const useUIStore = create<UIState>()(
       toggleAuditPanel: () => set((s) => ({
         auditPanelOpen: !s.auditPanelOpen,
         versionPanelOpen: !s.auditPanelOpen ? false : s.versionPanelOpen,
+        settingsPanelOpen: !s.auditPanelOpen ? false : s.settingsPanelOpen,
       })),
       toggleVersionPanel: () => set((s) => ({
         versionPanelOpen: !s.versionPanelOpen,
         auditPanelOpen: !s.versionPanelOpen ? false : s.auditPanelOpen,
+        settingsPanelOpen: !s.versionPanelOpen ? false : s.settingsPanelOpen,
+      })),
+      toggleSettingsPanel: () => set((s) => ({
+        settingsPanelOpen: !s.settingsPanelOpen,
+        auditPanelOpen: !s.settingsPanelOpen ? false : s.auditPanelOpen,
+        versionPanelOpen: !s.settingsPanelOpen ? false : s.versionPanelOpen,
       })),
     }),
     {

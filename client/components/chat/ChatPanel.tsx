@@ -4,6 +4,7 @@ import { useUIStore } from '../../store/uiStore';
 import { useChatStore } from '../../store/chatStore';
 import { useSheetStore } from '../../store/sheetStore';
 import { sendChat } from '../../api/chat';
+import { applyClientAction } from './applyClientAction';
 import { ToolCallCard } from './ToolCallCard';
 import type { ChatRequest, ChatMessage } from '@shared/chat';
 
@@ -27,6 +28,7 @@ export function ChatPanel() {
   const addMessage = useChatStore((s) => s.addMessage);
   const appendDelta = useChatStore((s) => s.appendDelta);
   const addToolCallToLast = useChatStore((s) => s.addToolCallToLast);
+  const setToolCallArgs = useChatStore((s) => s.setToolCallArgs);
   const addToolResult = useChatStore((s) => s.addToolResult);
   const setStreaming = useChatStore((s) => s.setStreaming);
   const setModel = useChatStore((s) => s.setModel);
@@ -108,7 +110,9 @@ export function ChatPanel() {
       onTextDelta: (content) => appendDelta(content),
       onToolCallStart: (id, name) =>
         addToolCallToLast({ id, name, arguments: {} }),
+      onToolCallArgs: (id, args) => setToolCallArgs(id, args),
       onToolResult: (result) => addToolResult(result),
+      onClientAction: (action) => applyClientAction(action),
       onRefresh: () => {
         // Refresh sheet data
         if (activeSheetId) loadSheet(activeSheetId);
@@ -120,7 +124,7 @@ export function ChatPanel() {
         abortRef.current = null;
       },
     });
-  }, [input, streaming, model, apiKey, activeSheetId, activeSheetMeta, sheets, addMessage, appendDelta, addToolCallToLast, addToolResult, setStreaming, loadSheet, fetchSheets]);
+  }, [input, streaming, model, apiKey, activeSheetId, activeSheetMeta, sheets, addMessage, appendDelta, addToolCallToLast, setToolCallArgs, addToolResult, setStreaming, loadSheet, fetchSheets]);
 
   const handleStop = () => {
     abortRef.current?.abort();

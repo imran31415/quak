@@ -2,8 +2,50 @@ import crypto from 'crypto';
 import { getDb } from '../db.js';
 import { batchInsert } from '../utils/batchInsert.js';
 import { cellTypeToDuckDB, safeTableName, formatValue } from '../utils/sql.js';
+import type { ClientAction } from '../../shared/chat.js';
 
-type ToolHandler = (args: Record<string, unknown>) => Promise<unknown>;
+type ToolHandlerResult = unknown | { __clientAction: ClientAction; result: unknown };
+type ToolHandler = (args: Record<string, unknown>) => Promise<ToolHandlerResult>;
+
+const VIEW_TYPES = ['grid', 'kanban', 'calendar', 'gallery', 'pivot', 'form', 'dashboard'] as const;
+const WIDGET_TYPES = ['chart', 'metric', 'table'] as const;
+const CHART_TYPES = ['bar', 'line', 'pie'] as const;
+const AGGREGATIONS = ['SUM', 'COUNT', 'AVG', 'MIN', 'MAX'] as const;
+
+async function loadSheetMeta(sheetId: string): Promise<{ name: string; columns: { name: string; cellType: string; id?: string }[] }> {
+  const db = getDb();
+  const result = await db.runAndReadAll(
+    `SELECT name, columns FROM __quak_sheets WHERE id = '${sheetId.replace(/'/g, "''")}'`
+  );
+  const rows = result.getRowObjectsJson();
+  if (rows.length === 0) throw new Error(`Sheet not found: ${sheetId}`);
+  const meta = rows[0] as Record<string, unknown>;
+  const columns = (typeof meta.columns === 'string' ? JSON.parse(meta.columns) : meta.columns) as {
+    name: string;
+    cellType: string;
+    id?: string;
+  }[];
+  return { name: meta.name as string, columns };
+}
+
+function assertColumnsExist(columns: { name: string }[], names: string[], context: string): void {
+  const existing = new Set(columns.map((c) => c.name));
+  const missing = names.filter((n) => !existing.has(n));
+  if (missing.length > 0) {
+    const candidates = columns.map((c) => c.name).join(', ');
+    throw new Error(
+      `${context}: column(s) not found: ${missing.join(', ')}. Available columns: ${candidates}`,
+    );
+  }
+}
+
+function assertNumericColumn(columns: { name: string; cellType: string }[], colName: string): void {
+  const col = columns.find((c) => c.name === colName);
+  if (!col) throw new Error(`Column not found: ${colName}`);
+  if (col.cellType !== 'number') {
+    throw new Error(`Column "${colName}" has cellType "${col.cellType}"; expected number for chart/metric values.`);
+  }
+}
 
 function getSheetColumns(columnsRaw: unknown): { name: string; cellType: string; id?: string }[] {
   return (typeof columnsRaw === 'string' ? JSON.parse(columnsRaw) : columnsRaw) as {
@@ -400,31 +442,116 @@ const handlers: Record<string, ToolHandler> = {
     return { applied: rulesWithIds.length, columnId };
   },
 
-  create_chart: async (args) => {
+  // ---- Client-action tools ----
+  // These mutate client-side zustand state (view configs, dashboard widgets).
+  // The server validates inputs against the sheet's metadata, then returns
+  // a __clientAction payload that the chat route emits over SSE.
+
+  set_view: async (args) => {
     const sheetId = args.sheetId as string;
-    const labelColumn = args.labelColumn as string;
-    const valueColumn = args.valueColumn as string;
-    const limit = (args.limit as number) || 20;
-    const db = getDb();
-    const tableName = safeTableName(sheetId);
-
-    const safeLabel = `"${labelColumn.replace(/"/g, '""')}"`;
-    const safeValue = `"${valueColumn.replace(/"/g, '""')}"`;
-
-    const result = await db.runAndReadAll(
-      `SELECT ${safeLabel} as label, ${safeValue} as value FROM "${tableName}" WHERE ${safeValue} IS NOT NULL LIMIT ${Number(limit)}`
-    );
-    const rows = result.getRowObjectsJson() as { label: unknown; value: unknown }[];
-
+    const viewType = args.viewType as string;
+    if (!VIEW_TYPES.includes(viewType as typeof VIEW_TYPES[number])) {
+      throw new Error(`Invalid viewType "${viewType}". Must be one of: ${VIEW_TYPES.join(', ')}`);
+    }
+    await loadSheetMeta(sheetId);
     return {
-      labels: rows.map((r) => String(r.label ?? '')),
-      values: rows.map((r) => Number(r.value) || 0),
-      labelColumn,
-      valueColumn,
-      dataPoints: rows.length,
+      __clientAction: { kind: 'set_view', sheetId, viewType: viewType as typeof VIEW_TYPES[number] },
+      result: { ok: true, viewType },
+    };
+  },
+
+  add_dashboard_widget: async (args) => {
+    const sheetId = args.sheetId as string;
+    const type = args.type as string;
+    const title = args.title as string;
+
+    if (!WIDGET_TYPES.includes(type as typeof WIDGET_TYPES[number])) {
+      throw new Error(`Invalid widget type "${type}". Must be one of: ${WIDGET_TYPES.join(', ')}`);
+    }
+    if (!title || typeof title !== 'string') {
+      throw new Error('title is required');
+    }
+    const { columns } = await loadSheetMeta(sheetId);
+    const id = `w_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    if (type === 'chart') {
+      const chartType = (args.chartType as string) ?? 'bar';
+      const xColumn = args.xColumn as string;
+      const yColumns = args.yColumns as string[];
+      if (!CHART_TYPES.includes(chartType as typeof CHART_TYPES[number])) {
+        throw new Error(`Invalid chartType "${chartType}". Must be one of: ${CHART_TYPES.join(', ')}`);
+      }
+      if (!xColumn || !Array.isArray(yColumns) || yColumns.length === 0) {
+        throw new Error('chart widget requires xColumn and at least one yColumns entry');
+      }
+      assertColumnsExist(columns, [xColumn, ...yColumns], 'chart widget');
+      for (const y of yColumns) assertNumericColumn(columns, y);
+      const widget = {
+        id, type: 'chart' as const, title,
+        chartConfig: { chartType: chartType as typeof CHART_TYPES[number], xColumn, yColumns },
+      };
+      return {
+        __clientAction: { kind: 'add_dashboard_widget', sheetId, widget },
+        result: { ok: true, widgetId: id, type, title },
+      };
+    }
+
+    if (type === 'metric') {
+      const column = args.column as string;
+      const aggregation = (args.aggregation as string) ?? 'COUNT';
+      if (!AGGREGATIONS.includes(aggregation as typeof AGGREGATIONS[number])) {
+        throw new Error(`Invalid aggregation "${aggregation}". Must be one of: ${AGGREGATIONS.join(', ')}`);
+      }
+      if (!column) throw new Error('metric widget requires column');
+      assertColumnsExist(columns, [column], 'metric widget');
+      if (aggregation !== 'COUNT') assertNumericColumn(columns, column);
+      const widget = {
+        id, type: 'metric' as const, title,
+        metricConfig: { column, aggregation: aggregation as typeof AGGREGATIONS[number] },
+      };
+      return {
+        __clientAction: { kind: 'add_dashboard_widget', sheetId, widget },
+        result: { ok: true, widgetId: id, type, title },
+      };
+    }
+
+    // table
+    const tableColumns = args.tableColumns as string[];
+    const tableLimit = Number(args.tableLimit ?? 10);
+    if (!Array.isArray(tableColumns) || tableColumns.length === 0) {
+      throw new Error('table widget requires tableColumns');
+    }
+    assertColumnsExist(columns, tableColumns, 'table widget');
+    const widget = {
+      id, type: 'table' as const, title,
+      tableConfig: { columns: tableColumns, limit: tableLimit },
+    };
+    return {
+      __clientAction: { kind: 'add_dashboard_widget', sheetId, widget },
+      result: { ok: true, widgetId: id, type, title },
+    };
+  },
+
+  clear_dashboard: async (args) => {
+    const sheetId = args.sheetId as string;
+    await loadSheetMeta(sheetId);
+    return {
+      __clientAction: { kind: 'clear_dashboard', sheetId },
+      result: { ok: true },
     };
   },
 };
+
+export function isClientActionResult(
+  data: unknown,
+): data is { __clientAction: ClientAction; result: unknown } {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    '__clientAction' in data &&
+    'result' in data
+  );
+}
 
 export async function executeTool(
   name: string,

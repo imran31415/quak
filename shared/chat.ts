@@ -8,7 +8,32 @@ export interface ToolDefinition {
     required?: boolean;
   }>;
   mutates: boolean;
+  /**
+   * Tools that mutate client-only state (zustand UI store) emit a
+   * client_action SSE event in addition to a regular tool_result.
+   */
+  clientAction?: boolean;
 }
+
+// --- Client-side actions ---
+// When a tool needs to mutate client-only state (view configs, dashboard
+// widgets, etc.), the server validates inputs and emits one of these for
+// the client chat panel to dispatch.
+export type ClientAction =
+  | { kind: 'set_view'; sheetId: string; viewType: 'grid' | 'kanban' | 'calendar' | 'gallery' | 'pivot' | 'form' | 'dashboard' }
+  | {
+      kind: 'add_dashboard_widget';
+      sheetId: string;
+      widget: {
+        id: string;
+        type: 'chart' | 'metric' | 'table';
+        title: string;
+        chartConfig?: { chartType: 'bar' | 'line' | 'pie'; xColumn: string; yColumns: string[] };
+        metricConfig?: { column: string; aggregation: 'SUM' | 'COUNT' | 'AVG' | 'MIN' | 'MAX' };
+        tableConfig?: { columns: string[]; limit: number };
+      };
+    }
+  | { kind: 'clear_dashboard'; sheetId: string };
 
 export interface ToolCall {
   id: string;
@@ -37,8 +62,10 @@ export interface ChatMessage {
 export type SSEEvent =
   | { type: 'text_delta'; data: { content: string } }
   | { type: 'tool_call_start'; data: { id: string; name: string } }
+  | { type: 'tool_call_args'; data: { id: string; arguments: Record<string, unknown> } }
   | { type: 'tool_result'; data: ToolResult }
   | { type: 'refresh'; data: Record<string, never> }
+  | { type: 'client_action'; data: ClientAction }
   | { type: 'error'; data: { message: string } }
   | { type: 'done'; data: Record<string, never> };
 
@@ -204,14 +231,40 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     mutates: true,
   },
   {
-    name: 'create_chart',
-    description: 'Extract chart-ready data (labels and values) from a sheet column pair',
+    name: 'set_view',
+    description: 'Switch the active view of a sheet. Use this to navigate the user to grid/kanban/calendar/gallery/pivot/form/dashboard. Call this *after* mutating dashboard widgets so the user sees the result.',
     parameters: {
       sheetId: { type: 'string', description: 'The sheet ID', required: true },
-      labelColumn: { type: 'string', description: 'Column name for chart labels', required: true },
-      valueColumn: { type: 'string', description: 'Column name for chart values', required: true },
-      limit: { type: 'number', description: 'Max data points (default 20)' },
+      viewType: { type: 'string', description: 'One of: grid, kanban, calendar, gallery, pivot, form, dashboard', required: true },
     },
-    mutates: false,
+    mutates: true,
+    clientAction: true,
+  },
+  {
+    name: 'add_dashboard_widget',
+    description: 'Add a chart, metric, or table widget to a sheet\'s Dashboard view. After adding, call set_view with viewType=dashboard so the user sees it. Validates that referenced columns exist on the sheet.',
+    parameters: {
+      sheetId: { type: 'string', description: 'The sheet ID', required: true },
+      type: { type: 'string', description: 'Widget type: chart, metric, or table', required: true },
+      title: { type: 'string', description: 'Widget title shown in the dashboard', required: true },
+      chartType: { type: 'string', description: '(chart only) bar, line, or pie' },
+      xColumn: { type: 'string', description: '(chart only) Column name for the x-axis / categories' },
+      yColumns: { type: 'array', description: '(chart only) One or more numeric column names for series' },
+      column: { type: 'string', description: '(metric only) Numeric column name to aggregate' },
+      aggregation: { type: 'string', description: '(metric only) SUM, COUNT, AVG, MIN, or MAX' },
+      tableColumns: { type: 'array', description: '(table only) Column names to display' },
+      tableLimit: { type: 'number', description: '(table only) Max rows to show (default 10)' },
+    },
+    mutates: true,
+    clientAction: true,
+  },
+  {
+    name: 'clear_dashboard',
+    description: 'Remove all widgets from a sheet\'s Dashboard view',
+    parameters: {
+      sheetId: { type: 'string', description: 'The sheet ID', required: true },
+    },
+    mutates: true,
+    clientAction: true,
   },
 ];

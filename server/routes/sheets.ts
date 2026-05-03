@@ -409,6 +409,9 @@ router.put('/api/sheets/:id/rows', async (req: Request, res: Response) => {
     const physicalCols = sheetColumns.filter((c) => c.cellType !== 'formula' && c.cellType !== 'lookup');
     await batchInsert(db, tableName, physicalCols, rows);
 
+    // Backfill __order so reads (which ORDER BY __order) preserve insert order
+    await db.run(`UPDATE "${tableName}" SET __order = rowid WHERE __order IS NULL`);
+
     res.json({ success: true, rowCount: rows.length });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';

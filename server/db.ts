@@ -1,15 +1,22 @@
 import { DuckDBInstance } from '@duckdb/node-api';
+import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { DB_PATH, IS_PRODUCTION } from './config.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.join(__dirname, 'storage', 'data', 'quak.duckdb');
+type Connection = Awaited<ReturnType<Awaited<ReturnType<typeof DuckDBInstance.create>>['connect']>>;
 
-let connection: Awaited<ReturnType<Awaited<ReturnType<typeof DuckDBInstance.create>>['connect']>> | null = null;
+let connection: Connection | null = null;
 
 export async function initDb(): Promise<void> {
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const instance = await DuckDBInstance.create(DB_PATH);
   connection = await instance.connect();
+
+  // Disable arbitrary file/HTTP/S3 access from user SQL (e.g. read_csv('/etc/passwd')).
+  // The embedded DB file continues to work — this only blocks SQL-driven external IO.
+  if (IS_PRODUCTION || process.env.DUCKDB_LOCK_DOWN === 'true') {
+    await connection.run('SET enable_external_access = false');
+  }
 
   await connection.run(`
     CREATE TABLE IF NOT EXISTS __quak_sheets (
@@ -72,9 +79,26 @@ export async function initDb(): Promise<void> {
   `);
 }
 
-export function getDb() {
+export function getDb(): Connection {
   if (!connection) {
     throw new Error('Database not initialized. Call initDb() first.');
   }
   return connection;
+}
+
+export async function pingDb(): Promise<void> {
+  if (!connection) throw new Error('db_not_initialized');
+  await connection.run('SELECT 1');
+}
+
+export async function closeDb(): Promise<void> {
+  const c = connection;
+  connection = null;
+  if (!c) return;
+  const maybeCloseable = c as unknown as { close?: () => unknown; disconnect?: () => unknown };
+  if (typeof maybeCloseable.close === 'function') {
+    await maybeCloseable.close();
+  } else if (typeof maybeCloseable.disconnect === 'function') {
+    await maybeCloseable.disconnect();
+  }
 }

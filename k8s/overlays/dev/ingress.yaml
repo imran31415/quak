@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: quak
+spec:
+  tls:
+    - hosts:
+        - quak-dev.scalebase.io
+      secretName: quak-dev-tls
+  rules:
+    - host: quak-dev.scalebase.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: quak-dev
+                port:
+                  name: http

@@ -1,0 +1,54 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+
+# Node
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs (rebuilt inside the image)
+dist
+dist-server
+.vite
+
+# Local DuckDB / uploads — these belong in the PVC, not the image
+server/storage
+
+# Tests & dev artifacts
+test-results
+playwright-report
+tests/__screenshots__
+*.png
+!client/**/*.png
+!docs/**/*.png
+screenshots
+screenshot.png
+
+# Editor / OS
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+.credentials
+
+# Docs site (not needed in runtime image)
+docs
+
+# CI / infra (don't ship into the image being deployed)
+k8s
+.github
+
+# Misc
+*.log
+README.md
+FEATURES.md
+Makefile
+playwright.config.ts

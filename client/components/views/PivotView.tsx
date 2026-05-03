@@ -3,40 +3,12 @@ import { useSheetStore } from '../../store/sheetStore';
 import { useUIStore } from '../../store/uiStore';
 import type { AggregationType, PivotConfig } from '../../store/uiStore';
 import { runQuery } from '../../db/duckdb';
+import { syncSheetToWasm } from '../../db/syncToWasm';
 import { api } from '../../api/sheets';
 import type { ColumnConfig } from '@shared/types';
 
-function cellTypeToSQL(cellType: string): string {
-  switch (cellType) {
-    case 'number': return 'DOUBLE';
-    case 'checkbox': return 'BOOLEAN';
-    default: return 'VARCHAR';
-  }
-}
-
 async function syncToWasm(meta: { columns: ColumnConfig[] }, rows: Record<string, unknown>[]) {
-  const cols = meta.columns
-    .filter((c) => c.cellType !== 'formula')
-    .map((c) => `"${c.name}" ${cellTypeToSQL(c.cellType)}`)
-    .join(', ');
-  await runQuery('DROP TABLE IF EXISTS current_sheet');
-  await runQuery(`CREATE TABLE current_sheet (${cols})`);
-  const filteredCols = meta.columns.filter((c) => c.cellType !== 'formula');
-  const batchSize = 1000;
-  for (let i = 0; i < rows.length; i += batchSize) {
-    const batch = rows.slice(i, i + batchSize);
-    const valuesClauses = batch.map((row) => {
-      const values = filteredCols.map((col) => {
-        const val = row[col.name];
-        if (val === null || val === undefined || val === '') return 'NULL';
-        if (col.cellType === 'number') return Number(val);
-        if (col.cellType === 'checkbox') return val ? 'TRUE' : 'FALSE';
-        return `'${String(val).replace(/'/g, "''")}'`;
-      }).join(', ');
-      return `(${values})`;
-    }).join(', ');
-    await runQuery(`INSERT INTO current_sheet VALUES ${valuesClauses}`);
-  }
+  await syncSheetToWasm('current_sheet', meta, rows);
 }
 
 const AGGREGATIONS: AggregationType[] = ['SUM', 'COUNT', 'AVG', 'MIN', 'MAX'];

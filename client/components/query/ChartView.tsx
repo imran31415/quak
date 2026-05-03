@@ -47,10 +47,10 @@ export function ChartView({ result, chartType, xColumn, yColumns }: ChartViewPro
     }));
 
     return (
-      <div data-testid="chart-view">
+      <div className="w-full min-w-0" data-testid="chart-view">
         <ResponsiveContainer width="100%" height={300}>
           <PieChart>
-            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
+            <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius="70%" label>
               {pieData.map((_, i) => (
                 <Cell key={i} fill={COLORS[i % COLORS.length]} />
               ))}
@@ -67,7 +67,7 @@ export function ChartView({ result, chartType, xColumn, yColumns }: ChartViewPro
   const DataComponent = chartType === 'line' ? Line : Bar;
 
   return (
-    <div data-testid="chart-view">
+    <div className="w-full min-w-0" data-testid="chart-view">
       <ResponsiveContainer width="100%" height={300}>
         <ChartComponent data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />

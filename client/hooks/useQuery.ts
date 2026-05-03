@@ -1,51 +1,13 @@
 import { useState, useCallback } from 'react';
 import { runQuery } from '../db/duckdb';
+import { syncSheetToWasm } from '../db/syncToWasm';
 import { useSheetStore } from '../store/sheetStore';
 import { api } from '../api/sheets';
 import type { QueryResult } from '@shared/types';
 import type { ColumnConfig } from '@shared/types';
 
-function cellTypeToSQL(cellType: string): string {
-  switch (cellType) {
-    case 'number': return 'DOUBLE';
-    case 'checkbox': return 'BOOLEAN';
-    default: return 'VARCHAR';
-  }
-}
-
 function sanitizeTableName(name: string): string {
   return name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-}
-
-async function syncSheetToWasm(
-  tableName: string,
-  meta: { columns: ColumnConfig[] },
-  rows: Record<string, unknown>[]
-) {
-  const cols = meta.columns
-    .filter((c) => c.cellType !== 'formula')
-    .map((c) => `"${c.name}" ${cellTypeToSQL(c.cellType)}`)
-    .join(', ');
-
-  await runQuery(`DROP TABLE IF EXISTS "${tableName}"`);
-  await runQuery(`CREATE TABLE "${tableName}" (${cols})`);
-
-  const filteredCols = meta.columns.filter((c) => c.cellType !== 'formula');
-  const batchSize = 1000;
-  for (let i = 0; i < rows.length; i += batchSize) {
-    const batch = rows.slice(i, i + batchSize);
-    const valuesClauses = batch.map((row) => {
-      const values = filteredCols.map((col) => {
-        const val = row[col.name];
-        if (val === null || val === undefined || val === '') return 'NULL';
-        if (col.cellType === 'number') return Number(val);
-        if (col.cellType === 'checkbox') return val ? 'TRUE' : 'FALSE';
-        return `'${String(val).replace(/'/g, "''")}'`;
-      }).join(', ');
-      return `(${values})`;
-    }).join(', ');
-    await runQuery(`INSERT INTO "${tableName}" VALUES ${valuesClauses}`);
-  }
 }
 
 async function syncAllSheetsToWasm() {
@@ -56,8 +18,7 @@ async function syncAllSheetsToWasm() {
     await syncSheetToWasm('current_sheet', activeSheetMeta, rows);
     const activeName = sanitizeTableName(activeSheetMeta.name);
     if (activeName !== 'current_sheet') {
-      await runQuery(`DROP VIEW IF EXISTS "${activeName}"`);
-      await runQuery(`CREATE VIEW "${activeName}" AS SELECT * FROM current_sheet`);
+      await runQuery(`CREATE OR REPLACE VIEW "${activeName}" AS SELECT * FROM current_sheet`);
     }
   }
 

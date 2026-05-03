@@ -11,6 +11,7 @@ interface ChatState {
   addMessage: (msg: ChatMessage) => void;
   appendDelta: (content: string) => void;
   addToolCallToLast: (tc: ToolCall) => void;
+  setToolCallArgs: (id: string, args: Record<string, unknown>) => void;
   addToolResult: (result: ToolResult) => void;
   setStreaming: (v: boolean) => void;
   setModel: (model: string) => void;
@@ -45,6 +46,19 @@ export const useChatStore = create<ChatState>()(
           const last = msgs[msgs.length - 1];
           if (last && last.role === 'assistant') {
             const toolCalls = [...(last.toolCalls || []), tc];
+            msgs[msgs.length - 1] = { ...last, toolCalls };
+          }
+          return { messages: msgs };
+        }),
+
+      setToolCallArgs: (id, args) =>
+        set((s) => {
+          const msgs = [...s.messages];
+          const last = msgs[msgs.length - 1];
+          if (last && last.role === 'assistant' && last.toolCalls) {
+            const toolCalls = last.toolCalls.map((tc) =>
+              tc.id === id ? { ...tc, arguments: args } : tc,
+            );
             msgs[msgs.length - 1] = { ...last, toolCalls };
           }
           return { messages: msgs };

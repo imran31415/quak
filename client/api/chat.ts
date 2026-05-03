@@ -1,9 +1,11 @@
-import type { ChatRequest, ToolResult } from '@shared/chat';
+import type { ChatRequest, ClientAction, ToolResult } from '@shared/chat';
 
 interface ChatCallbacks {
   onTextDelta: (content: string) => void;
   onToolCallStart: (id: string, name: string) => void;
+  onToolCallArgs: (id: string, args: Record<string, unknown>) => void;
   onToolResult: (result: ToolResult) => void;
+  onClientAction: (action: ClientAction) => void;
   onRefresh: () => void;
   onError: (msg: string) => void;
   onDone: () => void;
@@ -66,8 +68,14 @@ export function sendChat(
               case 'tool_call_start':
                 callbacks.onToolCallStart(event.data.id, event.data.name);
                 break;
+              case 'tool_call_args':
+                callbacks.onToolCallArgs(event.data.id, event.data.arguments);
+                break;
               case 'tool_result':
                 callbacks.onToolResult(event.data);
+                break;
+              case 'client_action':
+                callbacks.onClientAction(event.data);
                 break;
               case 'refresh':
                 callbacks.onRefresh();

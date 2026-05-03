@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { TOOL_DEFINITIONS, type ChatRequest, type ToolResult } from '../../shared/chat.js';
-import { executeTool } from '../llm/tools.js';
+import { executeTool, isClientActionResult } from '../llm/tools.js';
 import { streamChat } from '../llm/openrouter.js';
 import { buildSystemPrompt } from '../llm/systemPrompt.js';
 
@@ -190,7 +190,7 @@ async function handleRealChat(req: Request, res: Response) {
       });
 
       // Execute each tool call
-      let anyMutates = false;
+      let anyServerMutates = false;
       for (const tc of toolCalls.values()) {
         let parsedArgs: Record<string, unknown> = {};
         try {
@@ -199,29 +199,41 @@ async function handleRealChat(req: Request, res: Response) {
           // If args can't be parsed, pass empty
         }
 
+        // Stream parsed args to the client so the chat UI can show them
+        sendSSE(res, 'tool_call_args', { id: tc.id, arguments: parsedArgs });
+
         const result = await executeTool(tc.name, parsedArgs);
+
+        // Unwrap client-action results: emit a client_action SSE event and
+        // strip the marker before sending to client / LLM.
+        let visibleResult: unknown = result.data;
+        if (!result.error && isClientActionResult(result.data)) {
+          sendSSE(res, 'client_action', result.data.__clientAction);
+          visibleResult = result.data.result;
+        }
+
         const toolResult: ToolResult = {
           toolCallId: tc.id,
           name: tc.name,
-          result: result.data,
+          result: visibleResult,
           error: result.error,
         };
-
         sendSSE(res, 'tool_result', toolResult);
 
-        // Check if this tool mutates
         const def = TOOL_DEFINITIONS.find((d) => d.name === tc.name);
-        if (def?.mutates) anyMutates = true;
+        // A server-side data mutation requires a sheet refresh; client-action
+        // tools modify only client state and do not.
+        if (def?.mutates && !def?.clientAction) anyServerMutates = true;
 
         // Append tool result message for next round
         openAIMessages.push({
           role: 'tool',
-          content: JSON.stringify(result.data ?? { error: result.error }),
+          content: JSON.stringify(visibleResult ?? { error: result.error }),
           tool_call_id: tc.id,
         });
       }
 
-      if (anyMutates) {
+      if (anyServerMutates) {
         sendSSE(res, 'refresh', {});
       }
     }

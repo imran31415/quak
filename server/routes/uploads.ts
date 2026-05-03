@@ -3,13 +3,9 @@ import multer from 'multer';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { FILE_MAX_SIZE, FILE_ACCEPTED_EXTENSIONS } from '../../shared/constants.js';
+import { UPLOADS_DIR } from '../config.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOADS_DIR = path.join(__dirname, '..', 'storage', 'uploads');
-
-// Ensure uploads directory exists
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const storage = multer.diskStorage({

@@ -1,10 +1,13 @@
 node_modules/
 dist/
+dist-server/
 *.duckdb
 *.duckdb.wal
 *.duckdb-shm
 server/storage/data/
+server/storage/uploads/
 test-results/
 playwright-report/
 .vite/
 *.log
+*.tsbuildinfo

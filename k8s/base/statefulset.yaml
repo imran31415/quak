@@ -25,6 +25,8 @@ spec:
     spec:
       serviceAccountName: quak
       automountServiceAccountToken: false
+      imagePullSecrets:
+        - name: umi-backend
       terminationGracePeriodSeconds: 45
       securityContext:
         runAsNonRoot: true
@@ -36,7 +38,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: server
-          image: ghcr.io/imran31415/quak:latest
+          image: registry.digitalocean.com/resourceloop/quak:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

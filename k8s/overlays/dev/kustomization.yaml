@@ -31,5 +31,5 @@ patches:
       name: quak-config
 
 images:
-  - name: ghcr.io/imran31415/quak
+  - name: registry.digitalocean.com/resourceloop/quak
     newTag: dev

@@ -93,24 +93,40 @@ const handlers: Record<string, ToolHandler> = {
 
   create_sheet: async (args) => {
     const name = args.name as string;
-    const columns = args.columns as { name: string; cellType: string }[];
+    const columns = args.columns as Array<{
+      name: string;
+      cellType: string;
+      options?: string[];
+    }>;
     const db = getDb();
 
     const id = crypto.randomUUID();
     const tableName = safeTableName(id);
 
-    const colDefs = columns
+    // Skip virtual columns (formula/lookup) when building the physical table.
+    const physicalColumns = columns.filter(
+      (col) => col.cellType !== 'formula' && col.cellType !== 'lookup',
+    );
+    const colDefs = physicalColumns
       .map((col) => `"${col.name.replace(/"/g, '""')}" ${cellTypeToDuckDB(col.cellType)}`)
       .join(', ');
 
-    await db.run(`CREATE TABLE "${tableName}" (${colDefs})`);
+    // __order matches the user-facing POST /api/sheets route — required for the
+    // GET-sheet route's `ORDER BY t.__order ASC` to succeed.
+    await db.run(`CREATE TABLE "${tableName}" (__order INTEGER${colDefs ? ', ' + colDefs : ''})`);
 
-    const fullColumns = columns.map((col) => ({
-      id: col.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
-      name: col.name,
-      cellType: col.cellType,
-      width: 150,
-    }));
+    const fullColumns = columns.map((col) => {
+      const base: Record<string, unknown> = {
+        id: col.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+        name: col.name,
+        cellType: col.cellType,
+        width: 150,
+      };
+      if (col.cellType === 'dropdown' && Array.isArray(col.options)) {
+        base.options = col.options;
+      }
+      return base;
+    });
 
     const columnsJson = JSON.stringify(fullColumns);
     await db.run(
@@ -134,7 +150,11 @@ const handlers: Record<string, ToolHandler> = {
     if (metaRows.length === 0) throw new Error(`Sheet not found: ${sheetId}`);
 
     const sheetColumns = getSheetColumns((metaRows[0] as Record<string, unknown>).columns);
-    await batchInsert(db, tableName, sheetColumns, rows);
+    // Skip virtual columns when inserting (they're computed at read time).
+    const physicalCols = sheetColumns.filter((c) => c.cellType !== 'formula' && c.cellType !== 'lookup');
+    await batchInsert(db, tableName, physicalCols, rows);
+    // Backfill __order so the GET route's ORDER BY __order preserves insert order.
+    await db.run(`UPDATE "${tableName}" SET __order = rowid WHERE __order IS NULL`);
 
     return { added: rows.length };
   },
@@ -366,6 +386,9 @@ const handlers: Record<string, ToolHandler> = {
     await db.run(`CREATE TABLE "${tempName}" AS SELECT * FROM "${tableName}" ORDER BY ${safeCol} ${dir}`);
     await db.run(`DROP TABLE "${tableName}"`);
     await db.run(`ALTER TABLE "${tempName}" RENAME TO "${tableName}"`);
+    // Re-assign __order to reflect the new physical order. Otherwise GET-sheet
+    // re-sorts by the old __order values and the sort isn't visible.
+    await db.run(`UPDATE "${tableName}" SET __order = rowid`);
 
     return { sorted: column, direction: dir };
   },

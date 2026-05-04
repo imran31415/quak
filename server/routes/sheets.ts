@@ -188,6 +188,15 @@ router.get('/api/sheets/:id', async (req: Request, res: Response) => {
       }
     }
 
+    // Self-heal: older AI-created tables predated the __order column.
+    // Add it lazily so the ORDER BY t.__order ASC below doesn't 500.
+    try {
+      await db.run(`ALTER TABLE "${tableName}" ADD COLUMN __order INTEGER`);
+      await db.run(`UPDATE "${tableName}" SET __order = rowid WHERE __order IS NULL`);
+    } catch {
+      // Column already exists — fine.
+    }
+
     let rows: Record<string, unknown>[];
     const extraSelectStr = extraSelects.length > 0 ? ', ' + extraSelects.join(', ') : '';
     const joinStr = joinClauses.length > 0 ? ' ' + joinClauses.join(' ') : '';

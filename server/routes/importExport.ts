@@ -1,7 +1,11 @@
 import { Router, type Request, type Response } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import ExcelJS from 'exceljs';
+import { parse as csvParseStream } from 'csv-parse';
 import { getDb } from '../db.js';
 import { batchInsert } from '../utils/batchInsert.js';
 import { assertOwnership } from './sheets.js';
@@ -14,9 +18,19 @@ function uid(req: Request, res: Response): string | null {
 }
 
 const router = Router();
-// 256 MB cap. Large CSVs (~2M rows) commonly land between 100–250 MB. The
-// nginx ingress and pod memory limits below need to scale together.
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 256 * 1024 * 1024 } });
+
+// Disk-storage upload: 256 MB cap. Multer writes the body to /tmp so the
+// CSV parser can stream-read without holding the full file in heap. Cleanup
+// is in the route handler's finally block.
+const TMP_UPLOAD_DIR = path.join(os.tmpdir(), 'quak-uploads');
+fs.mkdirSync(TMP_UPLOAD_DIR, { recursive: true });
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: TMP_UPLOAD_DIR,
+    filename: (_req, _file, cb) => cb(null, crypto.randomUUID()),
+  }),
+  limits: { fileSize: 256 * 1024 * 1024 },
+});
 
 function cellTypeToDuckDB(cellType: string): string {
   switch (cellType) {
@@ -143,6 +157,130 @@ function googleSheetsCsvUrl(url: string): string | null {
   return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
 }
 
+type ColumnSpec = { id: string; name: string; cellType: string; width: number };
+
+function buildColumnSpec(headers: string[], sampleRows: Record<string, unknown>[]): ColumnSpec[] {
+  return headers.map((h) => {
+    const values = sampleRows.map((r) => r[h]);
+    const cellType = inferType(values);
+    return {
+      id: h.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+      name: h,
+      cellType,
+      width: cellType === 'checkbox' ? 80 : cellType === 'number' ? 120 : 150,
+    };
+  });
+}
+
+// Sniff the delimiter from the first line of a file (handles \r\n / \n).
+async function sniffDelimiter(filePath: string): Promise<',' | '\t' | ';'> {
+  const fd = await fs.promises.open(filePath, 'r');
+  try {
+    const buf = Buffer.alloc(8192);
+    const { bytesRead } = await fd.read(buf, 0, 8192, 0);
+    const head = buf.slice(0, bytesRead).toString('utf-8');
+    const newline = head.indexOf('\n');
+    const firstLine = newline >= 0 ? head.slice(0, newline) : head;
+    const tab = (firstLine.match(/\t/g) || []).length;
+    const comma = (firstLine.match(/,/g) || []).length;
+    const semi = (firstLine.match(/;/g) || []).length;
+    if (tab > comma && tab > semi) return '\t';
+    if (semi > comma) return ';';
+    return ',';
+  } finally {
+    await fd.close();
+  }
+}
+
+// Streaming CSV import: parse the file row-by-row and INSERT in batches so
+// peak heap is O(batch size) instead of O(file size). Sample the first N
+// rows for type inference, then stream the rest straight to DuckDB.
+async function streamImportCSV(
+  ownerId: string,
+  sheetName: string,
+  filePath: string,
+): Promise<{ id: string; name: string; columns: ColumnSpec[]; rowCount: number }> {
+  const SAMPLE_SIZE = 500;
+  const BATCH_SIZE = 1000;
+
+  const delimiter = await sniffDelimiter(filePath);
+  const stream = fs.createReadStream(filePath);
+  const parser = stream.pipe(
+    csvParseStream({
+      bom: true,
+      delimiter,
+      columns: true,
+      skip_empty_lines: true,
+      relax_column_count: true,
+      trim: false,
+    }),
+  );
+
+  const db = getDb();
+  const sheetId = crypto.randomUUID();
+  const tableName = safeTableName(sheetId);
+
+  let headers: string[] | null = null;
+  let columns: ColumnSpec[] | null = null;
+  const sample: Record<string, unknown>[] = [];
+  let pending: Record<string, unknown>[] = [];
+  let inserted = 0;
+
+  async function ensureTable(records: Record<string, unknown>[]) {
+    headers = headers ?? Object.keys(records[0]);
+    columns = buildColumnSpec(headers, records);
+    const colDefs = columns
+      .map((col) => `"${col.name.replace(/"/g, '""')}" ${cellTypeToDuckDB(col.cellType)}`)
+      .join(', ');
+    await db.run(`CREATE TABLE "${tableName}" (__order INTEGER, ${colDefs})`);
+    await batchInsert(db, tableName, columns, records);
+    inserted += records.length;
+  }
+
+  for await (const record of parser as AsyncIterable<Record<string, unknown>>) {
+    if (!headers) headers = Object.keys(record);
+
+    if (!columns) {
+      sample.push(record);
+      if (sample.length >= SAMPLE_SIZE) {
+        await ensureTable(sample);
+        sample.length = 0;
+      }
+      continue;
+    }
+
+    pending.push(record);
+    if (pending.length >= BATCH_SIZE) {
+      await batchInsert(db, tableName, columns, pending);
+      inserted += pending.length;
+      pending = [];
+    }
+  }
+
+  // Tail: file had fewer rows than SAMPLE_SIZE, or there's a partial batch.
+  if (!columns && sample.length > 0) {
+    await ensureTable(sample);
+  }
+  if (columns && pending.length > 0) {
+    await batchInsert(db, tableName, columns, pending);
+    inserted += pending.length;
+  }
+
+  if (!columns) {
+    throw new Error('CSV had no rows');
+  }
+
+  await db.run(`UPDATE "${tableName}" SET __order = rowid WHERE __order IS NULL`);
+
+  const columnsJson = JSON.stringify(columns);
+  await db.run(
+    `INSERT INTO __quak_sheets (id, owner_id, name, columns, created_at, updated_at)
+     VALUES ('${sheetId}', '${ownerId.replace(/'/g, "''")}', '${sheetName.replace(/'/g, "''")}', '${columnsJson.replace(/'/g, "''")}', current_timestamp, current_timestamp)`
+  );
+
+  return { id: sheetId, name: sheetName, columns, rowCount: inserted };
+}
+
 async function createSheetFromRows(
   ownerId: string,
   sheetName: string,
@@ -182,48 +320,57 @@ async function createSheetFromRows(
 
 // POST /api/import - import CSV / TSV / JSON / XLSX file
 router.post('/api/import', upload.single('file'), async (req: Request, res: Response) => {
+  const tmpPath = req.file?.path;
   try {
     const userId = uid(req, res);
     if (!userId) return;
-    if (!req.file) {
+    if (!req.file || !tmpPath) {
       res.status(400).json({ error: 'No file uploaded' });
       return;
     }
 
     const filename = req.file.originalname || 'import';
     const ext = filename.split('.').pop()?.toLowerCase();
+    const sheetName = filename.replace(/\.[^.]+$/, '');
 
+    if (ext === 'csv' || ext === 'tsv' || !ext) {
+      // Streaming path: parse + INSERT row-by-row from disk so peak heap is
+      // O(batch size), not O(file size). Handles 200+ MB CSVs comfortably.
+      const result = await streamImportCSV(userId, sheetName, tmpPath);
+      res.status(201).json(result);
+      return;
+    }
+
+    // XLSX / JSON: read from disk into memory (these formats are typically
+    // smaller and don't have a great streaming story).
     let headers: string[];
     let dataRows: Record<string, unknown>[];
-
     if (ext === 'xlsx' || ext === 'xls') {
-      const parsed = await parseXlsxBuffer(req.file.buffer);
+      const buf = await fs.promises.readFile(tmpPath);
+      const parsed = await parseXlsxBuffer(buf);
       headers = parsed.headers;
       dataRows = parsed.rows;
     } else if (ext === 'json') {
-      const content = req.file.buffer.toString('utf-8');
+      const content = await fs.promises.readFile(tmpPath, 'utf-8');
       const parsed = JSON.parse(content);
       const arr = Array.isArray(parsed) ? parsed : [parsed];
       headers = [...new Set(arr.flatMap((r: Record<string, unknown>) => Object.keys(r)))];
       dataRows = arr;
     } else {
-      // CSV/TSV
-      const content = req.file.buffer.toString('utf-8');
-      const { headers: csvHeaders, rows: csvRows } = parseCSV(content);
-      headers = csvHeaders;
-      dataRows = csvRows.map((row) => {
-        const obj: Record<string, unknown> = {};
-        headers.forEach((h, i) => { obj[h] = row[i] ?? ''; });
-        return obj;
-      });
+      res.status(400).json({ error: `Unsupported file extension: ${ext}` });
+      return;
     }
 
-    const sheetName = filename.replace(/\.[^.]+$/, '');
     const result = await createSheetFromRows(userId, sheetName, headers, dataRows);
     res.status(201).json(result);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     res.status(500).json({ error: message });
+  } finally {
+    // Clean up the multer tmp file regardless of outcome.
+    if (tmpPath) {
+      fs.promises.unlink(tmpPath).catch(() => {/* best-effort */});
+    }
   }
 });
 

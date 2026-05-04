@@ -113,7 +113,9 @@ spec:
       volumes:
         - name: tmp
           emptyDir:
-            sizeLimit: 256Mi
+            # Multer writes uploads here (up to 256 MB per file). 512 Mi gives
+            # the streaming-CSV import room for one upload + intermediate work.
+            sizeLimit: 512Mi
   volumeClaimTemplates:
     - metadata:
         name: data

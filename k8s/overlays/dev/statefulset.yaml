@@ -7,6 +7,8 @@ spec:
     spec:
       containers:
         - name: server
+          # Mutable :dev tag — always re-pull so rollout restart picks up new builds.
+          imagePullPolicy: Always
           resources:
             requests:
               cpu: 100m

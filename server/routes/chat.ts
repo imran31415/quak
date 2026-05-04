@@ -3,6 +3,7 @@ import { TOOL_DEFINITIONS, type ChatRequest, type ToolResult } from '../../share
 import { executeTool, isClientActionResult } from '../llm/tools.js';
 import { streamChat } from '../llm/openrouter.js';
 import { buildSystemPrompt } from '../llm/systemPrompt.js';
+import { createThinkStripper } from '../llm/thinkStripper.js';
 import {
   HAS_DEFAULT_LLM,
   LLM_DEFAULT_API_KEY,
@@ -167,7 +168,13 @@ async function handleRealChat(req: Request, res: Response) {
   sendSSE(res, 'provider', { provider: llmConfig.provider, model: llmConfig.model });
 
   try {
-    const systemPrompt = buildSystemPrompt(context);
+    let systemPrompt = buildSystemPrompt(context);
+    // Qwen 3 emits <think>...</think> chain-of-thought by default. /no_think
+    // turns it off — needed so streamed text_delta isn't reasoning noise and
+    // so tool calls fire without a multi-second thinking preamble.
+    if (/^qwen3/i.test(llmConfig.model)) {
+      systemPrompt += '\n\n/no_think';
+    }
 
     // Build message history in OpenAI format
     const openAIMessages: {
@@ -180,10 +187,13 @@ async function handleRealChat(req: Request, res: Response) {
       ...userMessages.map((m) => ({ role: m.role, content: m.content })),
     ];
 
+    const isQwen3 = /^qwen3/i.test(llmConfig.model);
+
     for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
       // Accumulate streamed response
       let contentBuffer = '';
       const toolCalls: Map<number, { id: string; name: string; args: string }> = new Map();
+      const stripper = isQwen3 ? createThinkStripper() : null;
 
       for await (const chunk of streamChat({
         baseUrl: llmConfig.baseUrl,
@@ -193,8 +203,9 @@ async function handleRealChat(req: Request, res: Response) {
         extraHeaders: llmConfig.extraHeaders,
       })) {
         if (chunk.type === 'content') {
-          contentBuffer += chunk.delta;
-          sendSSE(res, 'text_delta', { content: chunk.delta });
+          const visible = stripper ? stripper.process(chunk.delta) : chunk.delta;
+          contentBuffer += visible;
+          if (visible) sendSSE(res, 'text_delta', { content: visible });
         } else if (chunk.type === 'tool_call') {
           const existing = toolCalls.get(chunk.index);
           if (existing) {
@@ -209,6 +220,15 @@ async function handleRealChat(req: Request, res: Response) {
               sendSSE(res, 'tool_call_start', { id: chunk.id, name: chunk.name });
             }
           }
+        }
+      }
+
+      // Flush any text held back by the think-stripper at the tail.
+      if (stripper) {
+        const tail = stripper.flush();
+        if (tail) {
+          contentBuffer += tail;
+          sendSSE(res, 'text_delta', { content: tail });
         }
       }
 

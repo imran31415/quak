@@ -68,7 +68,7 @@ export function GridToolbar({ onSearchToggle, searchOpen, gridRef, selectedCells
   };
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700" data-testid="grid-toolbar">
+    <div className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 overflow-x-auto whitespace-nowrap [&>*]:shrink-0" data-testid="grid-toolbar">
       <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{activeSheetMeta.name}</span>
       {groupByColumn && (
         <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full" data-testid="grouping-indicator">

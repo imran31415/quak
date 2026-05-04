@@ -21,9 +21,16 @@ export function ImportDialog({ onClose, initialFile }: ImportDialogProps) {
     setFile(f);
     setError(null);
     try {
-      const text = await f.text();
       const ext = f.name.split('.').pop()?.toLowerCase();
 
+      // For binary formats (xlsx, xls) we can't preview client-side without
+      // pulling in another parser. Skip the preview and let the server do it.
+      if (ext === 'xlsx' || ext === 'xls') {
+        setPreview({ columns: [], rows: [] });
+        return;
+      }
+
+      const text = await f.text();
       let rows: Record<string, unknown>[];
       if (ext === 'json') {
         const parsed = JSON.parse(text);
@@ -43,6 +50,7 @@ export function ImportDialog({ onClose, initialFile }: ImportDialogProps) {
       setError((err as Error).message);
     }
   }, []);
+
 
   // Process initial file
   useState(() => {
@@ -86,17 +94,24 @@ export function ImportDialog({ onClose, initialFile }: ImportDialogProps) {
               onDrop={handleDrop}
               data-testid="import-dropzone"
             >
-              <p className="text-gray-500 dark:text-gray-400 mb-3">Drag & drop a CSV or JSON file here</p>
+              <p className="text-gray-500 dark:text-gray-400 mb-3">Drag & drop a CSV, TSV, JSON, or XLSX file</p>
               <label className="inline-block px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white text-sm rounded cursor-pointer hover:bg-blue-700 dark:hover:bg-blue-600">
                 Choose File
                 <input
                   type="file"
-                  accept=".csv,.tsv,.json"
+                  accept=".csv,.tsv,.json,.xlsx,.xls"
                   onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
                   className="hidden"
                   data-testid="import-file-input"
                 />
               </label>
+            </div>
+          ) : preview.columns.length === 0 ? (
+            <div className="py-8 text-center text-sm text-gray-600 dark:text-gray-300">
+              <p>File: <strong>{file?.name}</strong></p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                Spreadsheet preview not available — server will parse on import.
+              </p>
             </div>
           ) : (
             <div>

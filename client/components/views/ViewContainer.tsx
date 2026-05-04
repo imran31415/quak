@@ -23,7 +23,7 @@ export function ViewContainer() {
 
   return (
     <div className="flex flex-col h-full" data-testid="view-container">
-      <div className="flex items-center px-2 py-1 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      <div className="flex items-center px-2 py-1 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-x-auto whitespace-nowrap [&>*]:shrink-0">
         <ViewSwitcher sheetId={activeSheetId} />
         {viewConfigPopoverOpen && currentView !== 'grid' && (
           <ViewConfigPopover sheetId={activeSheetId} viewType={currentView} />

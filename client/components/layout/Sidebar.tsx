@@ -39,8 +39,10 @@ export function Sidebar() {
       )}
       <aside
         className={`${
-          isMobile ? 'fixed inset-y-0 left-0 z-50' : 'relative'
-        } w-64 bg-gray-50 dark:bg-gray-800/50 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0`}
+          isMobile
+            ? 'fixed left-0 top-0 z-50 h-[100dvh] w-[85vw] max-w-xs pb-14'
+            : 'relative w-64'
+        } bg-gray-50 dark:bg-gray-800/50 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0`}
         data-testid="sidebar"
       >
         <div className="p-3 border-b border-gray-200 dark:border-gray-700">

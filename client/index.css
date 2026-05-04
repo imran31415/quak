@@ -3,9 +3,18 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 html, body, #root {
+  /* `100dvh` shrinks when the on-screen keyboard appears; `100%` does not.
+     Falling back to `100%` for browsers without dvh support. */
   height: 100%;
+  height: 100dvh;
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Prevent iOS Safari from auto-zooming when focusing form inputs (which
+   happens when font-size < 16px). Only apply on touch-coarse viewports. */
+@media (pointer: coarse) {
+  input, textarea, select { font-size: 16px; }
 }
 
 html.dark {
@@ -34,3 +43,63 @@ html.dark {
 * {
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
+
+/* Chat markdown styling (no @tailwindcss/typography plugin installed) */
+.chat-md { line-height: 1.5; word-break: break-word; }
+.chat-md > *:first-child { margin-top: 0; }
+.chat-md > *:last-child { margin-bottom: 0; }
+.chat-md p { margin: 0.5em 0; }
+.chat-md h1, .chat-md h2, .chat-md h3, .chat-md h4 { font-weight: 600; margin: 0.8em 0 0.4em; line-height: 1.25; }
+.chat-md h1 { font-size: 1.25em; }
+.chat-md h2 { font-size: 1.15em; }
+.chat-md h3 { font-size: 1.05em; }
+.chat-md h4 { font-size: 1em; }
+.chat-md ul, .chat-md ol { margin: 0.5em 0; padding-left: 1.4em; }
+.chat-md li { margin: 0.15em 0; }
+.chat-md ul { list-style: disc; }
+.chat-md ol { list-style: decimal; }
+.chat-md strong { font-weight: 600; }
+.chat-md em { font-style: italic; }
+.chat-md a { color: rgb(37 99 235); text-decoration: underline; }
+.dark .chat-md a { color: rgb(96 165 250); }
+.chat-md code {
+  background: rgb(243 244 246);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+.dark .chat-md code { background: rgb(55 65 81); }
+.chat-md pre {
+  background: rgb(243 244 246);
+  border-radius: 6px;
+  padding: 0.7em 0.9em;
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+.dark .chat-md pre { background: rgb(31 41 55); }
+.chat-md pre code { background: transparent; padding: 0; font-size: 0.875em; }
+.chat-md blockquote {
+  border-left: 3px solid rgb(209 213 219);
+  padding-left: 0.8em;
+  margin: 0.6em 0;
+  color: rgb(75 85 99);
+}
+.dark .chat-md blockquote { border-color: rgb(75 85 99); color: rgb(156 163 175); }
+.chat-md table {
+  border-collapse: collapse;
+  margin: 0.6em 0;
+  display: block;
+  overflow-x: auto;
+  font-size: 0.9em;
+}
+.chat-md th, .chat-md td {
+  border: 1px solid rgb(229 231 235);
+  padding: 0.35em 0.6em;
+  text-align: left;
+}
+.dark .chat-md th, .dark .chat-md td { border-color: rgb(75 85 99); }
+.chat-md th { background: rgb(249 250 251); font-weight: 600; }
+.dark .chat-md th { background: rgb(31 41 55); }
+.chat-md hr { border: 0; border-top: 1px solid rgb(229 231 235); margin: 1em 0; }
+.dark .chat-md hr { border-top-color: rgb(75 85 99); }

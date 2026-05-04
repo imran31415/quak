@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useUIStore } from '../../store/uiStore';
 import { useChatStore } from '../../store/chatStore';
 import { useSheetStore } from '../../store/sheetStore';
@@ -44,6 +45,7 @@ export function ChatPanel() {
   const [input, setInput] = useState('');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [apiKeyDraft, setApiKeyDraft] = useState('');
+  const [fullscreen, setFullscreen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -146,14 +148,17 @@ export function ChatPanel() {
 
   if (!chatPanelOpen) return null;
 
+  const isWide = isMobile || fullscreen;
+
   return (
     <div
       className={`${
-        isMobile
-          ? 'fixed inset-0 z-50'
+        isWide
+          ? 'fixed inset-x-0 top-0 z-50 h-[100dvh]'
           : 'w-96 border-l border-gray-200 dark:border-gray-700'
       } bg-white dark:bg-gray-800 flex flex-col shrink-0`}
       data-testid="chat-panel"
+      data-fullscreen={fullscreen ? 'true' : 'false'}
     >
       {/* Header */}
       <div className="h-12 border-b border-gray-200 dark:border-gray-700 flex items-center px-3 gap-2 shrink-0">
@@ -184,6 +189,25 @@ export function ChatPanel() {
         >
           Clear
         </button>
+        {!isMobile && (
+          <button
+            onClick={() => setFullscreen((v) => !v)}
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-0.5"
+            aria-label={fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            data-testid="toggle-fullscreen"
+          >
+            {fullscreen ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V5H5M15 9V5h4M9 15v4H5M15 15v4h4" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4h4M16 4h4v4M4 16v4h4M16 20h4v-4" />
+              </svg>
+            )}
+          </button>
+        )}
         <button
           onClick={() => setChatPanelOpen(false)}
           className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 p-0.5"
@@ -237,7 +261,7 @@ export function ChatPanel() {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-3" data-testid="chat-messages">
+      <div className={`flex-1 overflow-y-auto px-3 py-2 space-y-3 ${fullscreen ? 'mx-auto w-full max-w-3xl' : ''}`} data-testid="chat-messages">
         {messages.length === 0 && (
           <div className="text-center text-sm text-gray-400 dark:text-gray-500 mt-8">
             Ask me to manage your spreadsheets!
@@ -273,8 +297,8 @@ export function ChatPanel() {
                   })}
                   {/* Text content */}
                   {msg.content && (
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <div className="chat-md text-gray-800 dark:text-gray-100">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                     </div>
                   )}
                   {streaming && msg.id === messages[messages.length - 1]?.id && !msg.content && !msg.toolCalls?.length && (
@@ -289,8 +313,12 @@ export function ChatPanel() {
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-3" data-testid="chat-input-area">
-        <div className="flex gap-2">
+      <div
+        className="border-t border-gray-200 dark:border-gray-700 p-3"
+        style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+        data-testid="chat-input-area"
+      >
+        <div className={`flex gap-2 ${fullscreen ? 'mx-auto w-full max-w-3xl' : ''}`}>
           <textarea
             ref={textareaRef}
             value={input}

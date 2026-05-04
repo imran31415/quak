@@ -169,6 +169,19 @@ export const api = {
     return res.json();
   },
 
+  importFromUrl: async (url: string, name?: string) => {
+    const res = await fetch(`${BASE}/import/url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, name }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+
   exportSheet: (sheetId: string, format: 'csv' | 'json') =>
     `${BASE}/sheets/${sheetId}/export?format=${format}`,
 

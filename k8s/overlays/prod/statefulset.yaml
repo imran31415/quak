@@ -12,8 +12,10 @@ spec:
               cpu: 500m
               memory: 1Gi
             limits:
+              # Match base — 4 GB so V8 heap (3 GB) + multer buffer + native
+              # overhead fit during large CSV imports.
               cpu: "2"
-              memory: 2Gi
+              memory: 4Gi
   volumeClaimTemplates:
     - metadata:
         name: data

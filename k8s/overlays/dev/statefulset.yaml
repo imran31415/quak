@@ -14,11 +14,10 @@ spec:
               cpu: 100m
               memory: 256Mi
             limits:
-              # Match prod headroom for large-file imports (multer memoryStorage
-              # spikes RAM during 100+ MB CSV parse → INSERT). Dev sees the same
-              # workloads in tests.
+              # Match prod (4 GB). Multer + parseCSV spike to ~3 GB on large
+              # imports; V8 heap is bumped to 3 GB via NODE_OPTIONS in base.
               cpu: "2"
-              memory: 2Gi
+              memory: 4Gi
   volumeClaimTemplates:
     - metadata:
         name: data

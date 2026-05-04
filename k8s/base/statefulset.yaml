@@ -52,17 +52,24 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            # Default V8 heap is ~1.7 GB and is the actual ceiling for big-CSV
+            # imports — the parse path allocates ~3x file size in JS strings
+            # and arrays. Bump to 3 GB so we can handle 100+ MB CSVs without
+            # FATAL Out of memory. Pod memory limit below must be ≥ this.
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=3072"
           resources:
             requests:
               cpu: 250m
               memory: 512Mi
               ephemeral-storage: 256Mi
             limits:
-              # Multer uses memory-storage for uploads, so a 256 MB CSV + the
-              # parsed JS structures + batched INSERT VALUES strings can spike
-              # to ~1.5 GB transient RAM. 2 GB gives headroom without OOMKill.
+              # Multer's memory-storage holds the upload buffer (≤256 MB), then
+              # parseCSV explodes ~3× the file size into V8 strings/arrays.
+              # NODE_OPTIONS sets heap to 3 GB; pod limit at 4 GB leaves room
+              # for the multer buffer + V8 native overhead.
               cpu: "2"
-              memory: 2Gi
+              memory: 4Gi
               ephemeral-storage: 1Gi
           securityContext:
             allowPrivilegeEscalation: false

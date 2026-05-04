@@ -4,6 +4,14 @@ import crypto from 'crypto';
 import ExcelJS from 'exceljs';
 import { getDb } from '../db.js';
 import { batchInsert } from '../utils/batchInsert.js';
+import { assertOwnership } from './sheets.js';
+import type { AuthedRequest } from '../middleware/session.js';
+
+function uid(req: Request, res: Response): string | null {
+  const u = (req as AuthedRequest).user;
+  if (!u) { res.status(500).json({ error: 'Session not initialized' }); return null; }
+  return u.id;
+}
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -134,6 +142,7 @@ function googleSheetsCsvUrl(url: string): string | null {
 }
 
 async function createSheetFromRows(
+  ownerId: string,
   sheetName: string,
   headers: string[],
   dataRows: Record<string, unknown>[],
@@ -156,13 +165,14 @@ async function createSheetFromRows(
   const colDefs = columns
     .map((col) => `"${col.name.replace(/"/g, '""')}" ${cellTypeToDuckDB(col.cellType)}`)
     .join(', ');
-  await db.run(`CREATE TABLE "${tableName}" (${colDefs})`);
+  await db.run(`CREATE TABLE "${tableName}" (__order INTEGER, ${colDefs})`);
   await batchInsert(db, tableName, columns, dataRows);
+  await db.run(`UPDATE "${tableName}" SET __order = rowid WHERE __order IS NULL`);
 
   const columnsJson = JSON.stringify(columns);
   await db.run(
-    `INSERT INTO __quak_sheets (id, name, columns, created_at, updated_at)
-     VALUES ('${id}', '${sheetName.replace(/'/g, "''")}', '${columnsJson.replace(/'/g, "''")}', current_timestamp, current_timestamp)`
+    `INSERT INTO __quak_sheets (id, owner_id, name, columns, created_at, updated_at)
+     VALUES ('${id}', '${ownerId.replace(/'/g, "''")}', '${sheetName.replace(/'/g, "''")}', '${columnsJson.replace(/'/g, "''")}', current_timestamp, current_timestamp)`
   );
 
   return { id, name: sheetName, columns, rowCount: dataRows.length };
@@ -171,6 +181,8 @@ async function createSheetFromRows(
 // POST /api/import - import CSV / TSV / JSON / XLSX file
 router.post('/api/import', upload.single('file'), async (req: Request, res: Response) => {
   try {
+    const userId = uid(req, res);
+    if (!userId) return;
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded' });
       return;
@@ -205,7 +217,7 @@ router.post('/api/import', upload.single('file'), async (req: Request, res: Resp
     }
 
     const sheetName = filename.replace(/\.[^.]+$/, '');
-    const result = await createSheetFromRows(sheetName, headers, dataRows);
+    const result = await createSheetFromRows(userId, sheetName, headers, dataRows);
     res.status(201).json(result);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -216,6 +228,8 @@ router.post('/api/import', upload.single('file'), async (req: Request, res: Resp
 // POST /api/import/url - fetch a remote CSV (e.g. Google Sheets) and import.
 router.post('/api/import/url', async (req: Request, res: Response) => {
   try {
+    const userId = uid(req, res);
+    if (!userId) return;
     const url = String((req.body as { url?: unknown }).url ?? '').trim();
     const userName = String((req.body as { name?: unknown }).name ?? '').trim();
     if (!url) {
@@ -271,7 +285,7 @@ router.post('/api/import/url', async (req: Request, res: Response) => {
     }
 
     const sheetName = userName || defaultName;
-    const result = await createSheetFromRows(sheetName, headers, dataRows);
+    const result = await createSheetFromRows(userId, sheetName, headers, dataRows);
     res.status(201).json(result);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
@@ -282,7 +296,10 @@ router.post('/api/import/url', async (req: Request, res: Response) => {
 // GET /api/sheets/:id/export - export sheet as CSV or JSON
 router.get('/api/sheets/:id/export', async (req: Request, res: Response) => {
   try {
+    const userId = uid(req, res);
+    if (!userId) return;
     const id = req.params.id as string;
+    if (!(await assertOwnership(id, userId, res))) return;
     const format = (req.query.format as string) || 'csv';
 
     const db = getDb();

@@ -24,6 +24,8 @@ function sendSSE(res: Response, event: string, data: unknown) {
 
 // Mock LLM responses for E2E testing
 async function handleMockChat(req: Request, res: Response) {
+  const authReq = req as import('../middleware/session.js').AuthedRequest;
+  const userId = authReq.user?.id ?? '';
   const { messages } = req.body as ChatRequest;
   const lastMsg = messages[messages.length - 1]?.content || '';
 
@@ -54,7 +56,7 @@ async function handleMockChat(req: Request, res: Response) {
     };
 
     // Execute the tool for real
-    const result = await executeTool('add_rows', toolArgs);
+    const result = await executeTool('add_rows', toolArgs, userId);
     const toolResult: ToolResult = {
       toolCallId,
       name: 'add_rows',
@@ -76,7 +78,7 @@ async function handleMockChat(req: Request, res: Response) {
 
     sendSSE(res, 'tool_call_start', { id: toolCallId, name: 'summarize_data' });
 
-    const result = await executeTool('summarize_data', { sheetId });
+    const result = await executeTool('summarize_data', { sheetId }, userId);
     const toolResult: ToolResult = {
       toolCallId,
       name: 'summarize_data',
@@ -99,7 +101,7 @@ async function handleMockChat(req: Request, res: Response) {
 
     sendSSE(res, 'tool_call_start', { id: toolCallId, name: 'sort_sheet' });
 
-    const result = await executeTool('sort_sheet', { sheetId, column: firstCol, direction: 'asc' });
+    const result = await executeTool('sort_sheet', { sheetId, column: firstCol, direction: 'asc' }, userId);
     const toolResult: ToolResult = {
       toolCallId,
       name: 'sort_sheet',
@@ -128,8 +130,24 @@ async function handleMockChat(req: Request, res: Response) {
 
 // Real LLM chat with agentic loop
 async function handleRealChat(req: Request, res: Response) {
+  const authReq = req as import('../middleware/session.js').AuthedRequest;
+  const userId = authReq.user?.id;
+  if (!userId) {
+    res.status(500).json({ error: 'Session not initialized' });
+    return;
+  }
   const { messages: userMessages, model, context } = req.body as ChatRequest;
-  const userApiKey = (req.headers['x-api-key'] as string) || '';
+  // Header takes precedence; fall back to the per-user setting in the DB.
+  let userApiKey = (req.headers['x-api-key'] as string) || '';
+  if (!userApiKey) {
+    const { getDb } = await import('../db.js');
+    const r = await getDb().runAndReadAll(
+      `SELECT openrouter_api_key FROM __quak_user_settings WHERE user_id = '${userId.replace(/'/g, "''")}'`,
+    );
+    const rows = r.getRowObjectsJson() as Array<Record<string, unknown>>;
+    const stored = rows[0]?.openrouter_api_key;
+    if (typeof stored === 'string' && stored.length > 0) userApiKey = stored;
+  }
 
   // Pick the provider: user-supplied OpenRouter key takes precedence over the
   // server-configured default (e.g. self-hosted Ollama).
@@ -261,7 +279,7 @@ async function handleRealChat(req: Request, res: Response) {
         // Stream parsed args to the client so the chat UI can show them
         sendSSE(res, 'tool_call_args', { id: tc.id, arguments: parsedArgs });
 
-        const result = await executeTool(tc.name, parsedArgs);
+        const result = await executeTool(tc.name, parsedArgs, userId);
 
         // Unwrap client-action results: emit a client_action SSE event and
         // strip the marker before sending to client / LLM.

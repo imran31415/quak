@@ -5,6 +5,18 @@ import path from 'path';
 import fs from 'fs';
 import { FILE_MAX_SIZE, FILE_ACCEPTED_EXTENSIONS } from '../../shared/constants.js';
 import { UPLOADS_DIR } from '../config.js';
+import { getDb } from '../db.js';
+import type { AuthedRequest } from '../middleware/session.js';
+
+function escSql(s: string): string { return s.replace(/'/g, "''"); }
+
+async function uploadOwner(filename: string): Promise<string | null> {
+  const r = await getDb().runAndReadAll(
+    `SELECT owner_id FROM __quak_uploads WHERE filename = '${escSql(filename)}'`,
+  );
+  const rows = r.getRowObjectsJson() as Array<Record<string, unknown>>;
+  return rows.length > 0 ? String(rows[0].owner_id) : null;
+}
 
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
@@ -34,11 +46,17 @@ const upload = multer({
 const router = Router();
 
 // POST /api/uploads — upload a file
-router.post('/api/uploads', upload.single('file'), (req: Request, res: Response) => {
+router.post('/api/uploads', upload.single('file'), async (req: Request, res: Response) => {
+  const u = (req as AuthedRequest).user;
+  if (!u) { res.status(500).json({ error: 'Session not initialized' }); return; }
   if (!req.file) {
     res.status(400).json({ error: 'No file uploaded' });
     return;
   }
+
+  await getDb().run(
+    `INSERT INTO __quak_uploads (filename, owner_id, original_name) VALUES ('${escSql(req.file.filename)}', '${escSql(u.id)}', '${escSql(req.file.originalname || '')}')`,
+  );
 
   const metadata = {
     filename: req.file.filename,
@@ -51,29 +69,36 @@ router.post('/api/uploads', upload.single('file'), (req: Request, res: Response)
 });
 
 // GET /api/uploads/:filename — serve a file
-router.get('/api/uploads/:filename', (req: Request, res: Response) => {
+router.get('/api/uploads/:filename', async (req: Request, res: Response) => {
+  const u = (req as AuthedRequest).user;
+  if (!u) { res.status(500).json({ error: 'Session not initialized' }); return; }
   const filename = path.basename(String(req.params.filename)); // sanitize
+  const owner = await uploadOwner(filename);
+  if (owner !== u.id) {
+    res.status(404).json({ error: 'File not found' });
+    return;
+  }
   const filePath = path.join(UPLOADS_DIR, filename);
-
   if (!fs.existsSync(filePath)) {
     res.status(404).json({ error: 'File not found' });
     return;
   }
-
   res.sendFile(filePath);
 });
 
 // DELETE /api/uploads/:filename — remove a file
-router.delete('/api/uploads/:filename', (req: Request, res: Response) => {
+router.delete('/api/uploads/:filename', async (req: Request, res: Response) => {
+  const u = (req as AuthedRequest).user;
+  if (!u) { res.status(500).json({ error: 'Session not initialized' }); return; }
   const filename = path.basename(String(req.params.filename)); // sanitize
-  const filePath = path.join(UPLOADS_DIR, filename);
-
-  if (!fs.existsSync(filePath)) {
+  const owner = await uploadOwner(filename);
+  if (owner !== u.id) {
     res.status(404).json({ error: 'File not found' });
     return;
   }
-
-  fs.unlinkSync(filePath);
+  const filePath = path.join(UPLOADS_DIR, filename);
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  await getDb().run(`DELETE FROM __quak_uploads WHERE filename = '${escSql(filename)}'`);
   res.json({ success: true });
 });
 

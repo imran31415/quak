@@ -5,6 +5,7 @@ const BASE = '/api';
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, {
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     ...options,
   });
   if (!res.ok) {
@@ -160,6 +161,7 @@ export const api = {
     formData.append('file', file);
     const res = await fetch(`${BASE}/import`, {
       method: 'POST',
+      credentials: 'include',
       body: formData,
     });
     if (!res.ok) {
@@ -172,6 +174,7 @@ export const api = {
   importFromUrl: async (url: string, name?: string) => {
     const res = await fetch(`${BASE}/import/url`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, name }),
     });
@@ -196,6 +199,7 @@ export const api = {
     formData.append('file', file);
     const res = await fetch(`${BASE}/uploads`, {
       method: 'POST',
+      credentials: 'include',
       body: formData,
     });
     if (!res.ok) {
@@ -208,6 +212,7 @@ export const api = {
   deleteFile: async (filename: string): Promise<void> => {
     const res = await fetch(`${BASE}/uploads/${encodeURIComponent(filename)}`, {
       method: 'DELETE',
+      credentials: 'include',
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));

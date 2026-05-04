@@ -25,6 +25,7 @@ export function sendChat(
 
       const res = await fetch('/api/chat', {
         method: 'POST',
+        credentials: 'include',
         headers,
         body: JSON.stringify(request),
         signal: controller.signal,

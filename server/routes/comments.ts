@@ -1,13 +1,24 @@
 import { Router, type Request, type Response } from 'express';
 import crypto from 'crypto';
 import { getDb } from '../db.js';
+import { assertOwnership } from './sheets.js';
+import type { AuthedRequest } from '../middleware/session.js';
 
 const router = Router();
+
+function uid(req: Request, res: Response): string | null {
+  const u = (req as AuthedRequest).user;
+  if (!u) { res.status(500).json({ error: 'Session not initialized' }); return null; }
+  return u.id;
+}
 
 // GET /api/sheets/:id/comments — list all comments for a sheet
 router.get('/api/sheets/:id/comments', async (req: Request, res: Response) => {
   try {
     const sheetId = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(sheetId, userId, res))) return;
     const db = getDb();
     const result = await db.runAndReadAll(
       `SELECT * FROM __quak_comments WHERE sheet_id = '${sheetId.replace(/'/g, "''")}' ORDER BY created_at DESC`
@@ -24,6 +35,9 @@ router.get('/api/sheets/:id/comments', async (req: Request, res: Response) => {
 router.post('/api/sheets/:id/comments', async (req: Request, res: Response) => {
   try {
     const sheetId = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(sheetId, userId, res))) return;
     const { rowId, columnId, text } = req.body as {
       rowId: number;
       columnId: string;
@@ -53,6 +67,10 @@ router.post('/api/sheets/:id/comments', async (req: Request, res: Response) => {
 // PUT /api/sheets/:id/comments/:commentId — update a comment
 router.put('/api/sheets/:id/comments/:commentId', async (req: Request, res: Response) => {
   try {
+    const sheetId = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(sheetId, userId, res))) return;
     const commentId = req.params.commentId as string;
     const { text } = req.body as { text: string };
 
@@ -63,7 +81,7 @@ router.put('/api/sheets/:id/comments/:commentId', async (req: Request, res: Resp
 
     const db = getDb();
     await db.run(
-      `UPDATE __quak_comments SET text = '${text.replace(/'/g, "''")}', updated_at = current_timestamp WHERE id = '${commentId.replace(/'/g, "''")}'`
+      `UPDATE __quak_comments SET text = '${text.replace(/'/g, "''")}', updated_at = current_timestamp WHERE id = '${commentId.replace(/'/g, "''")}' AND sheet_id = '${sheetId.replace(/'/g, "''")}'`
     );
 
     res.json({ success: true });
@@ -76,10 +94,14 @@ router.put('/api/sheets/:id/comments/:commentId', async (req: Request, res: Resp
 // DELETE /api/sheets/:id/comments/:commentId — delete a comment
 router.delete('/api/sheets/:id/comments/:commentId', async (req: Request, res: Response) => {
   try {
+    const sheetId = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(sheetId, userId, res))) return;
     const commentId = req.params.commentId as string;
     const db = getDb();
     await db.run(
-      `DELETE FROM __quak_comments WHERE id = '${commentId.replace(/'/g, "''")}'`
+      `DELETE FROM __quak_comments WHERE id = '${commentId.replace(/'/g, "''")}' AND sheet_id = '${sheetId.replace(/'/g, "''")}'`
     );
     res.json({ success: true });
   } catch (err: unknown) {

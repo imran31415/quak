@@ -4,17 +4,52 @@ import { getDb } from '../db.js';
 import { batchInsert } from '../utils/batchInsert.js';
 import { cellTypeToDuckDB, safeTableName, formatValue } from '../utils/sql.js';
 import { logAudit } from '../utils/auditLog.js';
+import type { AuthedRequest } from '../middleware/session.js';
 
 const router = Router();
+
+function escSql(s: string): string { return s.replace(/'/g, "''"); }
+
+// Returns the user id, or sends 500 and returns null if the session middleware
+// failed to attach (should never happen behind attachSession, but defensive).
+function uid(req: Request, res: Response): string | null {
+  const u = (req as AuthedRequest).user;
+  if (!u) {
+    res.status(500).json({ error: 'Session not initialized' });
+    return null;
+  }
+  return u.id;
+}
+
+// Quick ownership gate. Sends 404 if the sheet doesn't exist for this user.
+// Once it returns true, subsequent SELECTs from __quak_sheets by id are safe
+// because UUIDs don't collide between users.
+export async function assertOwnership(
+  sheetId: string,
+  userId: string,
+  res: Response,
+): Promise<boolean> {
+  const db = getDb();
+  const r = await db.runAndReadAll(
+    `SELECT 1 FROM __quak_sheets WHERE id = '${escSql(sheetId)}' AND owner_id = '${escSql(userId)}'`,
+  );
+  if (r.getRowObjectsJson().length === 0) {
+    res.status(404).json({ error: 'Sheet not found' });
+    return false;
+  }
+  return true;
+}
 
 // ---------------------------------------------------------------------------
 // GET /api/sheets  —  list all sheets (metadata only)
 // ---------------------------------------------------------------------------
-router.get('/api/sheets', async (_req: Request, res: Response) => {
+router.get('/api/sheets', async (req: Request, res: Response) => {
   try {
+    const userId = uid(req, res);
+    if (!userId) return;
     const db = getDb();
     const result = await db.runAndReadAll(
-      'SELECT id, name, columns, created_at, updated_at FROM __quak_sheets ORDER BY created_at DESC'
+      `SELECT id, name, columns, created_at, updated_at FROM __quak_sheets WHERE owner_id = '${escSql(userId)}' ORDER BY created_at DESC`,
     );
     const rows = result.getRowObjectsJson();
 
@@ -37,6 +72,8 @@ router.get('/api/sheets', async (_req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 router.post('/api/sheets', async (req: Request, res: Response) => {
   try {
+    const userId = uid(req, res);
+    if (!userId) return;
     const { name, columns } = req.body as {
       name: string;
       columns: { name: string; cellType: string }[];
@@ -64,8 +101,8 @@ router.post('/api/sheets', async (req: Request, res: Response) => {
     // Insert metadata into __quak_sheets
     const columnsJson = JSON.stringify(columns);
     await db.run(
-      `INSERT INTO __quak_sheets (id, name, columns, created_at, updated_at)
-       VALUES ('${id}', '${name.replace(/'/g, "''")}', '${columnsJson.replace(/'/g, "''")}', current_timestamp, current_timestamp)`
+      `INSERT INTO __quak_sheets (id, owner_id, name, columns, created_at, updated_at)
+       VALUES ('${id}', '${escSql(userId)}', '${name.replace(/'/g, "''")}', '${columnsJson.replace(/'/g, "''")}', current_timestamp, current_timestamp)`
     );
 
     res.status(201).json({ id, name, columns });
@@ -81,6 +118,9 @@ router.post('/api/sheets', async (req: Request, res: Response) => {
 router.get('/api/sheets/:id', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const db = getDb();
 
     // Fetch metadata
@@ -255,6 +295,9 @@ router.get('/api/sheets/:id', async (req: Request, res: Response) => {
 router.get('/api/sheets/:id/schema', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const db = getDb();
 
     // Fetch metadata
@@ -319,6 +362,9 @@ router.get('/api/sheets/:id/schema', async (req: Request, res: Response) => {
 router.put('/api/sheets/:id', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const { name, columns } = req.body as {
       name?: string;
       columns?: { name: string; cellType: string }[];
@@ -359,6 +405,9 @@ router.put('/api/sheets/:id', async (req: Request, res: Response) => {
 router.delete('/api/sheets/:id', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const db = getDb();
     const tableName = safeTableName(id);
 
@@ -384,6 +433,9 @@ router.delete('/api/sheets/:id', async (req: Request, res: Response) => {
 router.put('/api/sheets/:id/rows', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const { rows } = req.body as { rows: Record<string, unknown>[] };
 
     if (!rows || !Array.isArray(rows)) {
@@ -434,6 +486,9 @@ router.put('/api/sheets/:id/rows', async (req: Request, res: Response) => {
 router.post('/api/sheets/:id/rows', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const row = req.body as Record<string, unknown>;
 
     const db = getDb();
@@ -494,6 +549,9 @@ router.post('/api/sheets/:id/rows', async (req: Request, res: Response) => {
 router.put('/api/sheets/:id/cells', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const { rowIndex, column, value } = req.body as {
       rowIndex: number;
       column: string;
@@ -554,6 +612,9 @@ router.put('/api/sheets/:id/cells', async (req: Request, res: Response) => {
 router.put('/api/sheets/:id/cells/bulk', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const { cells } = req.body as {
       cells: Array<{ rowId: number; column: string; value: unknown }>;
     };
@@ -612,6 +673,9 @@ router.put('/api/sheets/:id/cells/bulk', async (req: Request, res: Response) => 
 router.delete('/api/sheets/:id/rows', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const { rowIds } = req.body as { rowIds: number[] };
 
     if (!rowIds || !Array.isArray(rowIds) || rowIds.length === 0) {
@@ -640,6 +704,9 @@ router.delete('/api/sheets/:id/rows', async (req: Request, res: Response) => {
 router.post('/api/sheets/:id/columns', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const { name, cellType, width, options, formula, linkedSheetId, linkedDisplayColumn, lookupLinkedColumn, lookupReturnColumn } = req.body as {
       name: string;
       cellType: string;
@@ -708,6 +775,9 @@ router.post('/api/sheets/:id/columns', async (req: Request, res: Response) => {
 router.delete('/api/sheets/:id/columns/:columnId', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const columnId = req.params.columnId as string;
 
     const db = getDb();
@@ -759,6 +829,9 @@ router.delete('/api/sheets/:id/columns/:columnId', async (req: Request, res: Res
 router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const columnId = req.params.columnId as string;
     const { name: newName, cellType: newCellType, width: newWidth, options: newOptions, pinned: newPinned, conditionalFormats: newConditionalFormats, validationRules: newValidationRules, formula: newFormula, linkedSheetId: newLinkedSheetId, linkedDisplayColumn: newLinkedDisplayColumn, lookupLinkedColumn: newLookupLinkedColumn, lookupReturnColumn: newLookupReturnColumn, dependentOn: newDependentOn } = req.body as {
       name?: string;
@@ -853,6 +926,9 @@ router.put('/api/sheets/:id/columns/:columnId', async (req: Request, res: Respon
 router.put('/api/sheets/:id/rows/reorder', async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(id, userId, res))) return;
     const { rowIds } = req.body as { rowIds: number[] };
 
     if (!rowIds || !Array.isArray(rowIds) || rowIds.length === 0) {

@@ -1,5 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { getDb } from '../db.js';
+import { assertOwnership } from './sheets.js';
+import type { AuthedRequest } from '../middleware/session.js';
 
 const router = Router();
 
@@ -7,6 +9,9 @@ const router = Router();
 router.get('/api/sheets/:id/audit', async (req: Request, res: Response) => {
   try {
     const sheetId = req.params.id as string;
+    const u = (req as AuthedRequest).user;
+    if (!u) { res.status(500).json({ error: 'Session not initialized' }); return; }
+    if (!(await assertOwnership(sheetId, u.id, res))) return;
     const limit = Math.min(Number(req.query.limit) || 50, 200);
     const offset = Number(req.query.offset) || 0;
 

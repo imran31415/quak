@@ -4,8 +4,16 @@ import { getDb } from '../db.js';
 import { logAudit } from '../utils/auditLog.js';
 import { batchInsert } from '../utils/batchInsert.js';
 import { cellTypeToDuckDB, safeTableName } from '../utils/sql.js';
+import { assertOwnership } from './sheets.js';
+import type { AuthedRequest } from '../middleware/session.js';
 
 const router = Router();
+
+function uid(req: Request, res: Response): string | null {
+  const u = (req as AuthedRequest).user;
+  if (!u) { res.status(500).json({ error: 'Session not initialized' }); return null; }
+  return u.id;
+}
 
 function escapeSQL(val: string): string {
   return val.replace(/'/g, "''");
@@ -15,6 +23,9 @@ function escapeSQL(val: string): string {
 router.post('/api/sheets/:id/snapshots', async (req: Request, res: Response) => {
   try {
     const sheetId = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(sheetId, userId, res))) return;
     const label = req.body.label as string | undefined;
     const db = getDb();
 
@@ -63,6 +74,9 @@ router.post('/api/sheets/:id/snapshots', async (req: Request, res: Response) => 
 router.get('/api/sheets/:id/snapshots', async (req: Request, res: Response) => {
   try {
     const sheetId = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(sheetId, userId, res))) return;
     const db = getDb();
 
     const result = await db.runAndReadAll(
@@ -122,6 +136,9 @@ router.get('/api/sheets/:id/snapshots/:snapshotId', async (req: Request, res: Re
 router.post('/api/sheets/:id/snapshots/:snapshotId/restore', async (req: Request, res: Response) => {
   try {
     const sheetId = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(sheetId, userId, res))) return;
     const snapshotId = req.params.snapshotId as string;
     const db = getDb();
 

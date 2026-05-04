@@ -82,10 +82,11 @@ export const useChatStore = create<ChatState>()(
     }),
     {
       name: 'quak-chat-store',
+      // apiKey moved to server-side __quak_user_settings; stop persisting
+      // it in localStorage. Model preference can move there too in a follow-up.
       partialize: (state) => ({
         messages: state.messages,
         model: state.model,
-        apiKey: state.apiKey,
       }),
     }
   )

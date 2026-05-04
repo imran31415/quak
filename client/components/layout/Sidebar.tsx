@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSheetStore } from '../../store/sheetStore';
 import { useUIStore } from '../../store/uiStore';
 import { CreateSheetDialog } from './CreateSheetDialog';
+import { MobileSheetPicker } from './MobileSheetPicker';
 
 export function Sidebar() {
   const { sheets, activeSheetId, fetchSheets, loadSheet, deleteSheet } = useSheetStore();
@@ -20,6 +21,9 @@ export function Sidebar() {
       }
     });
   }, [fetchSheets, loadSheet]);
+
+  // Mobile gets a bottom-sheet picker instead of the side drawer.
+  if (isMobile) return <MobileSheetPicker />;
 
   const handleCreate = () => {
     if (!newName.trim()) return;

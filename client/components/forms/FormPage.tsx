@@ -20,7 +20,7 @@ export function FormPage() {
   useEffect(() => {
     async function fetchSchema() {
       try {
-        const res = await fetch(`/api/sheets/${sheetId}/schema`);
+        const res = await fetch(`/api/sheets/${sheetId}/schema`, { credentials: 'include' });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || `Sheet not found`);
@@ -43,6 +43,7 @@ export function FormPage() {
   const handleSubmit = useCallback(async (values: Record<string, unknown>) => {
     const res = await fetch(`/api/sheets/${sheetId}/rows`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(values),
     });

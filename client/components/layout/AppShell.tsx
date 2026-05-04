@@ -7,12 +7,18 @@ import { ChatPanel } from '../chat/ChatPanel';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useTheme } from '../../hooks/useTheme';
 import { useUIStore } from '../../store/uiStore';
+import { useUserStore } from '../../store/userStore';
 
 export function AppShell({ children }: { children: ReactNode }) {
   useResponsive();
   useTheme();
   const isMobile = useUIStore((s) => s.isMobile);
+  const fetchMe = useUserStore((s) => s.fetchMe);
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Boot the session: first request creates an anonymous user via the
+  // session middleware. Subsequent calls reuse the cookie.
+  useEffect(() => { fetchMe(); }, [fetchMe]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

@@ -1,13 +1,24 @@
 import { Router, type Request, type Response } from 'express';
 import crypto from 'crypto';
 import { getDb } from '../db.js';
+import { assertOwnership } from './sheets.js';
+import type { AuthedRequest } from '../middleware/session.js';
 
 const router = Router();
+
+function uid(req: Request, res: Response): string | null {
+  const u = (req as AuthedRequest).user;
+  if (!u) { res.status(500).json({ error: 'Session not initialized' }); return null; }
+  return u.id;
+}
 
 // GET /api/sheets/:id/cell-formats — list all formats for a sheet
 router.get('/api/sheets/:id/cell-formats', async (req: Request, res: Response) => {
   try {
     const sheetId = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(sheetId, userId, res))) return;
     const db = getDb();
     const result = await db.runAndReadAll(
       `SELECT * FROM __quak_cell_formats WHERE sheet_id = '${sheetId.replace(/'/g, "''")}'`
@@ -24,6 +35,9 @@ router.get('/api/sheets/:id/cell-formats', async (req: Request, res: Response) =
 router.put('/api/sheets/:id/cell-formats', async (req: Request, res: Response) => {
   try {
     const sheetId = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(sheetId, userId, res))) return;
     const { rowId, colName, bold, italic, underline, strikethrough, textColor, bgColor } = req.body as {
       rowId: number;
       colName: string;
@@ -73,6 +87,9 @@ router.put('/api/sheets/:id/cell-formats', async (req: Request, res: Response) =
 router.put('/api/sheets/:id/cell-formats/bulk', async (req: Request, res: Response) => {
   try {
     const sheetId = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(sheetId, userId, res))) return;
     const { formats } = req.body as {
       formats: Array<{
         rowId: number;
@@ -127,6 +144,9 @@ router.put('/api/sheets/:id/cell-formats/bulk', async (req: Request, res: Respon
 router.delete('/api/sheets/:id/cell-formats', async (req: Request, res: Response) => {
   try {
     const sheetId = req.params.id as string;
+    const userId = uid(req, res);
+    if (!userId) return;
+    if (!(await assertOwnership(sheetId, userId, res))) return;
     const { cells } = req.body as {
       cells: Array<{ rowId: number; colName: string }>;
     };

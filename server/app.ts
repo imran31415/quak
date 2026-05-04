@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import path from 'path';
 import healthRouter from './routes/health.js';
+import authRouter from './routes/auth.js';
 import sheetsRouter from './routes/sheets.js';
 import queryRouter from './routes/query.js';
 import importExportRouter from './routes/importExport.js';
@@ -13,6 +14,7 @@ import auditRouter from './routes/audit.js';
 import snapshotsRouter from './routes/snapshots.js';
 import uploadsRouter from './routes/uploads.js';
 import cellFormatsRouter from './routes/cellFormats.js';
+import { attachSession } from './middleware/session.js';
 import { CLIENT_DIST_DIR, IS_PRODUCTION } from './config.js';
 import { logger } from './logger.js';
 
@@ -59,7 +61,13 @@ if (!IS_PRODUCTION) {
 
 app.use(express.json({ limit: '10mb' }));
 
+// Health probes register before the session middleware so they stay anonymous.
 app.use(healthRouter);
+
+// Every other /api/* route gets req.user populated (anonymous user lazily
+// created on first request without a session cookie).
+app.use(attachSession);
+app.use(authRouter);
 app.use(sheetsRouter);
 app.use(queryRouter);
 app.use(importExportRouter);

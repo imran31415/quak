@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { useUIStore } from '../../store/uiStore';
 import { useChatStore } from '../../store/chatStore';
 import { useSheetStore } from '../../store/sheetStore';
+import { useUserStore } from '../../store/userStore';
 import { sendChat } from '../../api/chat';
 import { applyClientAction } from './applyClientAction';
 import { ToolCallCard } from './ToolCallCard';
@@ -26,6 +27,7 @@ export function ChatPanel() {
   const streaming = useChatStore((s) => s.streaming);
   const model = useChatStore((s) => s.model);
   const apiKey = useChatStore((s) => s.apiKey);
+  const hasServerApiKey = useUserStore((s) => s.user?.hasApiKey ?? false);
   const addMessage = useChatStore((s) => s.addMessage);
   const appendDelta = useChatStore((s) => s.appendDelta);
   const addToolCallToLast = useChatStore((s) => s.addToolCallToLast);
@@ -33,7 +35,6 @@ export function ChatPanel() {
   const addToolResult = useChatStore((s) => s.addToolResult);
   const setStreaming = useChatStore((s) => s.setStreaming);
   const setModel = useChatStore((s) => s.setModel);
-  const setApiKey = useChatStore((s) => s.setApiKey);
   const clearMessages = useChatStore((s) => s.clearMessages);
 
   const activeSheetId = useSheetStore((s) => s.activeSheetId);
@@ -43,8 +44,6 @@ export function ChatPanel() {
   const fetchSheets = useSheetStore((s) => s.fetchSheets);
 
   const [input, setInput] = useState('');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
-  const [apiKeyDraft, setApiKeyDraft] = useState('');
   const [fullscreen, setFullscreen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -140,12 +139,6 @@ export function ChatPanel() {
     }
   };
 
-  const saveApiKey = () => {
-    setApiKey(apiKeyDraft.trim());
-    setShowApiKeyInput(false);
-    setApiKeyDraft('');
-  };
-
   if (!chatPanelOpen) return null;
 
   const isWide = isMobile || fullscreen;
@@ -163,7 +156,7 @@ export function ChatPanel() {
       {/* Header */}
       <div className="h-12 border-b border-gray-200 dark:border-gray-700 flex items-center px-3 gap-2 shrink-0">
         <span className="font-semibold text-sm text-gray-800 dark:text-gray-100">AI Assistant</span>
-        {apiKey ? (
+        {(apiKey || hasServerApiKey) ? (
           <select
             value={model}
             onChange={(e) => setModel(e.target.value)}
@@ -220,43 +213,13 @@ export function ChatPanel() {
         </button>
       </div>
 
-      {/* API Key Banner: default LLM works without one; this is an upsell */}
-      {!apiKey && (
+      {/* Server-driven default LLM is in use unless the user added an OpenRouter
+          key in Settings. The banner is a static upsell now — config lives there. */}
+      {!hasServerApiKey && !apiKey && (
         <div className="px-3 py-2 bg-blue-50 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-700" data-testid="api-key-banner">
-          {showApiKeyInput ? (
-            <div className="flex gap-1">
-              <input
-                type="password"
-                value={apiKeyDraft}
-                onChange={(e) => setApiKeyDraft(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && saveApiKey()}
-                placeholder="sk-or-..."
-                className="flex-1 text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                data-testid="api-key-input"
-                autoFocus
-              />
-              <button
-                onClick={saveApiKey}
-                className="text-xs bg-purple-600 dark:bg-purple-500 text-white px-2 py-1 rounded hover:bg-purple-700 dark:hover:bg-purple-600"
-                data-testid="save-api-key"
-              >
-                Save
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs text-blue-800 dark:text-blue-300">
-                Using free default model. Tool-calling quality is limited.
-              </span>
-              <button
-                onClick={() => setShowApiKeyInput(true)}
-                className="text-xs text-blue-800 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-200 underline shrink-0"
-                data-testid="set-api-key-btn"
-              >
-                Add OpenRouter key
-              </button>
-            </div>
-          )}
+          <span className="text-xs text-blue-800 dark:text-blue-300">
+            Using free default model. Add an OpenRouter API key in <strong>Settings</strong> for premium models.
+          </span>
         </div>
       )}
 

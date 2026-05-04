@@ -5,7 +5,11 @@
 set -uo pipefail
 
 BASE="${1:-http://localhost:3001}"
-CURL=(curl -s --max-time 15 -H 'Content-Type: application/json')
+JAR="$(mktemp -t quak-smoke-jar.XXXXXX)"
+trap 'rm -f "$JAR"' EXIT
+# All requests share the same anonymous user via a cookie jar so owner-scoped
+# routes (post-multi-user-migration) can find the data they just wrote.
+CURL=(curl -s --max-time 15 -b "$JAR" -c "$JAR" -H 'Content-Type: application/json')
 
 pass=0; fail=0
 check() {
@@ -23,11 +27,16 @@ echo
 echo "== /api/health"
 check "200 + status:ok" '"status":"ok"' "$("${CURL[@]}" "$BASE/api/health")"
 
+echo "== GET /api/me (anonymous user lazily created)"
+check "user id" '"id":"' "$("${CURL[@]}" "$BASE/api/me")"
+
 echo "== POST /api/sheets (user-facing create)"
 CREATE_BODY='{"name":"smoke-'"$(date +%s)"'","columns":[{"name":"Item","cellType":"text"},{"name":"Qty","cellType":"number"}]}'
 CREATE_RESP=$("${CURL[@]}" -X POST "$BASE/api/sheets" -d "$CREATE_BODY")
 check "returns id" '"id":"' "$CREATE_RESP"
-SHEET_ID=$(echo "$CREATE_RESP" | sed -nE 's/.*"id":"([^"]+)".*/\1/p')
+# First UUID-shaped id in the response is the sheet id; greedy regex would
+# pick the last one (which is a column id in some responses).
+SHEET_ID=$(echo "$CREATE_RESP" | grep -oE '"id":"[a-f0-9-]{36}"' | head -1 | sed 's/"id":"\(.*\)"/\1/')
 echo "  sheet_id=$SHEET_ID"
 
 echo "== POST /api/sheets/:id/rows (single row add)"
@@ -55,9 +64,9 @@ check "select 1+1" '"two":2' "$("${CURL[@]}" -X POST "$BASE/api/query" -d "$QUER
 echo "== POST /api/import (CSV upload)"
 TMPCSV=$(mktemp /tmp/smoke.XXXXXX.csv)
 printf 'name,age\nAlice,30\nBob,25\n' > "$TMPCSV"
-IMPORT_RESP=$(curl -s --max-time 15 -X POST -F "file=@$TMPCSV" "$BASE/api/import")
+IMPORT_RESP=$(curl -s --max-time 15 -b "$JAR" -c "$JAR" -X POST -F "file=@$TMPCSV" "$BASE/api/import")
 check "imported sheet" '"rowCount":2' "$IMPORT_RESP"
-IMPORT_ID=$(echo "$IMPORT_RESP" | sed -nE 's/.*"id":"([^"]+)".*/\1/p')
+IMPORT_ID=$(echo "$IMPORT_RESP" | grep -oE '"id":"[a-f0-9-]{36}"' | head -1 | sed 's/"id":"\(.*\)"/\1/')
 rm -f "$TMPCSV"
 
 echo "== DELETE /api/sheets/:id (cleanup)"

@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { getDb } from '../db.js';
 import { batchInsert } from '../utils/batchInsert.js';
 import { cellTypeToDuckDB, safeTableName, formatValue } from '../utils/sql.js';
@@ -6,6 +7,22 @@ import type { ClientAction } from '../../shared/chat.js';
 
 type ToolHandlerResult = unknown | { __clientAction: ClientAction; result: unknown };
 type ToolHandler = (args: Record<string, unknown>) => Promise<ToolHandlerResult>;
+
+// Per-request user context. executeTool() establishes this; handlers read it
+// to scope queries to the current user's sheets.
+const userContext = new AsyncLocalStorage<{ userId: string }>();
+function currentUserId(): string {
+  const ctx = userContext.getStore();
+  if (!ctx) throw new Error('Tool called outside user context');
+  return ctx.userId;
+}
+function escSql(s: string): string { return s.replace(/'/g, "''"); }
+async function assertSheetOwned(sheetId: string): Promise<void> {
+  const r = await getDb().runAndReadAll(
+    `SELECT 1 FROM __quak_sheets WHERE id = '${escSql(sheetId)}' AND owner_id = '${escSql(currentUserId())}'`,
+  );
+  if (r.getRowObjectsJson().length === 0) throw new Error(`Sheet not found: ${sheetId}`);
+}
 
 const VIEW_TYPES = ['grid', 'kanban', 'calendar', 'gallery', 'pivot', 'form', 'dashboard'] as const;
 const WIDGET_TYPES = ['chart', 'metric', 'table'] as const;
@@ -15,7 +32,7 @@ const AGGREGATIONS = ['SUM', 'COUNT', 'AVG', 'MIN', 'MAX'] as const;
 async function loadSheetMeta(sheetId: string): Promise<{ name: string; columns: { name: string; cellType: string; id?: string }[] }> {
   const db = getDb();
   const result = await db.runAndReadAll(
-    `SELECT name, columns FROM __quak_sheets WHERE id = '${sheetId.replace(/'/g, "''")}'`
+    `SELECT name, columns FROM __quak_sheets WHERE id = '${escSql(sheetId)}' AND owner_id = '${escSql(currentUserId())}'`
   );
   const rows = result.getRowObjectsJson();
   if (rows.length === 0) throw new Error(`Sheet not found: ${sheetId}`);
@@ -59,7 +76,7 @@ const handlers: Record<string, ToolHandler> = {
   list_sheets: async () => {
     const db = getDb();
     const result = await db.runAndReadAll(
-      'SELECT id, name, columns, created_at, updated_at FROM __quak_sheets ORDER BY created_at DESC'
+      `SELECT id, name, columns, created_at, updated_at FROM __quak_sheets WHERE owner_id = '${escSql(currentUserId())}' ORDER BY created_at DESC`
     );
     const rows = result.getRowObjectsJson();
     return rows.map((row: Record<string, unknown>) => {
@@ -76,7 +93,7 @@ const handlers: Record<string, ToolHandler> = {
     const db = getDb();
 
     const metaResult = await db.runAndReadAll(
-      `SELECT id, name, columns FROM __quak_sheets WHERE id = '${sheetId.replace(/'/g, "''")}'`
+      `SELECT id, name, columns FROM __quak_sheets WHERE id = '${escSql(sheetId)}' AND owner_id = '${escSql(currentUserId())}'`
     );
     const metaRows = metaResult.getRowObjectsJson();
     if (metaRows.length === 0) throw new Error(`Sheet not found: ${sheetId}`);
@@ -130,8 +147,8 @@ const handlers: Record<string, ToolHandler> = {
 
     const columnsJson = JSON.stringify(fullColumns);
     await db.run(
-      `INSERT INTO __quak_sheets (id, name, columns, created_at, updated_at)
-       VALUES ('${id}', '${name.replace(/'/g, "''")}', '${columnsJson.replace(/'/g, "''")}', current_timestamp, current_timestamp)`
+      `INSERT INTO __quak_sheets (id, owner_id, name, columns, created_at, updated_at)
+       VALUES ('${id}', '${escSql(currentUserId())}', '${name.replace(/'/g, "''")}', '${columnsJson.replace(/'/g, "''")}', current_timestamp, current_timestamp)`
     );
 
     return { id, name, columns: fullColumns };
@@ -144,7 +161,7 @@ const handlers: Record<string, ToolHandler> = {
     const tableName = safeTableName(sheetId);
 
     const metaResult = await db.runAndReadAll(
-      `SELECT columns FROM __quak_sheets WHERE id = '${sheetId.replace(/'/g, "''")}'`
+      `SELECT columns FROM __quak_sheets WHERE id = '${escSql(sheetId)}' AND owner_id = '${escSql(currentUserId())}'`
     );
     const metaRows = metaResult.getRowObjectsJson();
     if (metaRows.length === 0) throw new Error(`Sheet not found: ${sheetId}`);
@@ -166,7 +183,7 @@ const handlers: Record<string, ToolHandler> = {
     const tableName = safeTableName(sheetId);
 
     const metaResult = await db.runAndReadAll(
-      `SELECT columns FROM __quak_sheets WHERE id = '${sheetId.replace(/'/g, "''")}'`
+      `SELECT columns FROM __quak_sheets WHERE id = '${escSql(sheetId)}' AND owner_id = '${escSql(currentUserId())}'`
     );
     const metaRows = metaResult.getRowObjectsJson();
     if (metaRows.length === 0) throw new Error(`Sheet not found: ${sheetId}`);
@@ -189,6 +206,7 @@ const handlers: Record<string, ToolHandler> = {
 
   delete_rows: async (args) => {
     const sheetId = args.sheetId as string;
+    await assertSheetOwned(sheetId);
     const rowIds = args.rowIds as number[];
     const db = getDb();
     const tableName = safeTableName(sheetId);
@@ -211,7 +229,7 @@ const handlers: Record<string, ToolHandler> = {
     await db.run(`ALTER TABLE "${tableName}" ADD COLUMN "${safeName}" ${cellTypeToDuckDB(cellType)}`);
 
     const metaResult = await db.runAndReadAll(
-      `SELECT columns FROM __quak_sheets WHERE id = '${sheetId.replace(/'/g, "''")}'`
+      `SELECT columns FROM __quak_sheets WHERE id = '${escSql(sheetId)}' AND owner_id = '${escSql(currentUserId())}'`
     );
     const metaRows = metaResult.getRowObjectsJson();
     if (metaRows.length === 0) throw new Error(`Sheet not found: ${sheetId}`);
@@ -237,7 +255,7 @@ const handlers: Record<string, ToolHandler> = {
     const tableName = safeTableName(sheetId);
 
     const metaResult = await db.runAndReadAll(
-      `SELECT columns FROM __quak_sheets WHERE id = '${sheetId.replace(/'/g, "''")}'`
+      `SELECT columns FROM __quak_sheets WHERE id = '${escSql(sheetId)}' AND owner_id = '${escSql(currentUserId())}'`
     );
     const metaRows = metaResult.getRowObjectsJson();
     if (metaRows.length === 0) throw new Error(`Sheet not found: ${sheetId}`);
@@ -266,7 +284,7 @@ const handlers: Record<string, ToolHandler> = {
     const tableName = safeTableName(sheetId);
 
     const metaResult = await db.runAndReadAll(
-      `SELECT columns FROM __quak_sheets WHERE id = '${sheetId.replace(/'/g, "''")}'`
+      `SELECT columns FROM __quak_sheets WHERE id = '${escSql(sheetId)}' AND owner_id = '${escSql(currentUserId())}'`
     );
     const metaRows = metaResult.getRowObjectsJson();
     if (metaRows.length === 0) throw new Error(`Sheet not found: ${sheetId}`);
@@ -290,11 +308,12 @@ const handlers: Record<string, ToolHandler> = {
 
   delete_sheet: async (args) => {
     const sheetId = args.sheetId as string;
+    await assertSheetOwned(sheetId);
     const db = getDb();
     const tableName = safeTableName(sheetId);
 
     await db.run(`DROP TABLE IF EXISTS "${tableName}"`);
-    await db.run(`DELETE FROM __quak_sheets WHERE id = '${sheetId.replace(/'/g, "''")}'`);
+    await db.run(`DELETE FROM __quak_sheets WHERE id = '${escSql(sheetId)}' AND owner_id = '${escSql(currentUserId())}'`);
 
     return { deleted: sheetId };
   },
@@ -304,6 +323,9 @@ const handlers: Record<string, ToolHandler> = {
     const forbidden = /\b(CREATE|DROP|ALTER|DELETE|UPDATE|INSERT|TRUNCATE|GRANT|REVOKE)\b/i;
     if (forbidden.test(sql)) {
       throw new Error('Only SELECT queries are allowed');
+    }
+    if (/\b__quak_/i.test(sql)) {
+      throw new Error('Internal __quak_* tables are not queryable');
     }
 
     const db = getDb();
@@ -320,7 +342,7 @@ const handlers: Record<string, ToolHandler> = {
     const tableName = safeTableName(sheetId);
 
     const metaResult = await db.runAndReadAll(
-      `SELECT columns FROM __quak_sheets WHERE id = '${sheetId.replace(/'/g, "''")}'`
+      `SELECT columns FROM __quak_sheets WHERE id = '${escSql(sheetId)}' AND owner_id = '${escSql(currentUserId())}'`
     );
     const metaRows = metaResult.getRowObjectsJson();
     if (metaRows.length === 0) throw new Error(`Sheet not found: ${sheetId}`);
@@ -373,6 +395,7 @@ const handlers: Record<string, ToolHandler> = {
 
   sort_sheet: async (args) => {
     const sheetId = args.sheetId as string;
+    await assertSheetOwned(sheetId);
     const column = args.column as string;
     const direction = (args.direction as string) || 'asc';
     const db = getDb();
@@ -395,6 +418,7 @@ const handlers: Record<string, ToolHandler> = {
 
   filter_sheet: async (args) => {
     const sheetId = args.sheetId as string;
+    await assertSheetOwned(sheetId);
     const column = args.column as string;
     const operator = args.operator as string;
     const value = args.value as string;
@@ -437,7 +461,7 @@ const handlers: Record<string, ToolHandler> = {
     const db = getDb();
 
     const metaResult = await db.runAndReadAll(
-      `SELECT columns FROM __quak_sheets WHERE id = '${sheetId.replace(/'/g, "''")}'`
+      `SELECT columns FROM __quak_sheets WHERE id = '${escSql(sheetId)}' AND owner_id = '${escSql(currentUserId())}'`
     );
     const metaRows = metaResult.getRowObjectsJson();
     if (metaRows.length === 0) throw new Error(`Sheet not found: ${sheetId}`);
@@ -578,17 +602,20 @@ export function isClientActionResult(
 
 export async function executeTool(
   name: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  userId: string,
 ): Promise<{ data?: unknown; error?: string }> {
   const handler = handlers[name];
   if (!handler) {
     return { error: `Unknown tool: ${name}` };
   }
 
-  try {
-    const data = await handler(args);
-    return { data };
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) };
-  }
+  return userContext.run({ userId }, async () => {
+    try {
+      const data = await handler(args);
+      return { data };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) };
+    }
+  });
 }

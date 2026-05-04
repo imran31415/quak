@@ -14,8 +14,11 @@ spec:
               cpu: 100m
               memory: 256Mi
             limits:
-              cpu: 500m
-              memory: 512Mi
+              # Match prod headroom for large-file imports (multer memoryStorage
+              # spikes RAM during 100+ MB CSV parse → INSERT). Dev sees the same
+              # workloads in tests.
+              cpu: "2"
+              memory: 2Gi
   volumeClaimTemplates:
     - metadata:
         name: data

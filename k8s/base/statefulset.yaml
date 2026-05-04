@@ -58,8 +58,11 @@ spec:
               memory: 512Mi
               ephemeral-storage: 256Mi
             limits:
-              cpu: "1"
-              memory: 1Gi
+              # Multer uses memory-storage for uploads, so a 256 MB CSV + the
+              # parsed JS structures + batched INSERT VALUES strings can spike
+              # to ~1.5 GB transient RAM. 2 GB gives headroom without OOMKill.
+              cpu: "2"
+              memory: 2Gi
               ephemeral-storage: 1Gi
           securityContext:
             allowPrivilegeEscalation: false

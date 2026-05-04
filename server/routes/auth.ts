@@ -190,6 +190,39 @@ router.post('/api/auth/pair', async (req: Request, res: Response) => {
   }
 });
 
+// DELETE /api/me — fully delete the current user and everything they own.
+// Used by smoke tests / cleanup flows so transient anonymous accounts don't
+// pile up as empty records.
+router.delete('/api/me', async (req: Request, res: Response) => {
+  const userId = requireUser(req as AuthedRequest, res);
+  if (!userId) return;
+  try {
+    const db = getDb();
+    // Drop the user's data tables (sheet_<uuid> per sheet they own).
+    const sheets = (
+      await db.runAndReadAll(
+        `SELECT id FROM __quak_sheets WHERE owner_id = '${escSql(userId)}'`,
+      )
+    ).getRowObjectsJson() as Array<Record<string, unknown>>;
+    for (const row of sheets) {
+      const sheetId = String(row.id);
+      const tableName = 'sheet_' + sheetId.replace(/[^a-zA-Z0-9_]/g, '_');
+      await db.run(`DROP TABLE IF EXISTS "${tableName}"`);
+    }
+    // Then the metadata + per-user rows.
+    await db.run(`DELETE FROM __quak_sheets WHERE owner_id = '${escSql(userId)}'`);
+    await db.run(`DELETE FROM __quak_uploads WHERE owner_id = '${escSql(userId)}'`);
+    await db.run(`DELETE FROM __quak_user_settings WHERE user_id = '${escSql(userId)}'`);
+    await db.run(`DELETE FROM __quak_pair_codes WHERE user_id = '${escSql(userId)}'`);
+    await db.run(`DELETE FROM __quak_sessions WHERE user_id = '${escSql(userId)}'`);
+    await db.run(`DELETE FROM __quak_users WHERE id = '${escSql(userId)}'`);
+    clearSessionCookie(res);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
 // POST /api/auth/logout — invalidate current session cookie
 router.post('/api/auth/logout', async (req: Request, res: Response) => {
   const authReq = req as AuthedRequest;

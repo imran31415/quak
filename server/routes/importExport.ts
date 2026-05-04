@@ -14,7 +14,9 @@ function uid(req: Request, res: Response): string | null {
 }
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+// 256 MB cap. Large CSVs (~2M rows) commonly land between 100–250 MB. The
+// nginx ingress and pod memory limits below need to scale together.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 256 * 1024 * 1024 } });
 
 function cellTypeToDuckDB(cellType: string): string {
   switch (cellType) {

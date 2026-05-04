@@ -73,6 +73,9 @@ echo "== DELETE /api/sheets/:id (cleanup)"
 check "deleted smoke" '"success":true' "$("${CURL[@]}" -X DELETE "$BASE/api/sheets/$SHEET_ID")"
 check "deleted import" '"success":true' "$("${CURL[@]}" -X DELETE "$BASE/api/sheets/$IMPORT_ID")"
 
+echo "== DELETE /api/me (final cleanup — drops the anonymous test user)"
+check "self-destruct" '"success":true' "$("${CURL[@]}" -X DELETE "$BASE/api/me")"
+
 echo
 echo "== summary: $pass passed, $fail failed"
 [[ $fail -eq 0 ]] || exit 1

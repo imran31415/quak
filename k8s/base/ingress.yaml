@@ -6,9 +6,11 @@ metadata:
     app.kubernetes.io/name: quak
     app.kubernetes.io/component: server
   annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: "16m"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-body-size: "256m"
+    # 10 min — large CSV imports (2M+ rows) take >2 min to parse + INSERT.
+    # Same value covers SSE chat streams that can run a long agentic loop.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 spec:

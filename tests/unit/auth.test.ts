@@ -207,6 +207,32 @@ describe('Auth & per-user sessions', () => {
     expect(denied.error).toMatch(/Sheet not found/);
   });
 
+  it('DELETE /api/me removes the user and their sheets entirely', async () => {
+    const a = newJar();
+    await call(a, 'GET', '/api/me');
+    const created = await call(a, 'POST', '/api/sheets', {
+      name: 'to-be-nuked',
+      columns: [{ name: 'X', cellType: 'text' }],
+    });
+    const sheetId = (created.body as { id: string }).id;
+
+    // The user, sheet, and sheet_<uuid> table should all exist.
+    const tableName = 'sheet_' + sheetId.replace(/-/g, '_');
+    const existsBefore = await getDb().runAndReadAll(
+      `SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_name = '${tableName}'`,
+    );
+    expect(Number((existsBefore.getRowObjectsJson()[0] as Record<string, unknown>).n)).toBe(1);
+
+    const del = await call(a, 'DELETE', '/api/me');
+    expect(del.status).toBe(200);
+
+    // sheet_<uuid> table dropped.
+    const existsAfter = await getDb().runAndReadAll(
+      `SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_name = '${tableName}'`,
+    );
+    expect(Number((existsAfter.getRowObjectsJson()[0] as Record<string, unknown>).n)).toBe(0);
+  });
+
   it('logout invalidates the current session token', async () => {
     const jar = newJar();
     const me1 = await call(jar, 'GET', '/api/me');

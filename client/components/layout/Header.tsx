@@ -7,6 +7,8 @@ export function Header() {
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const toggleQueryPanel = useUIStore((s) => s.toggleQueryPanel);
   const toggleChatPanel = useUIStore((s) => s.toggleChatPanel);
+  const setImportDialogOpen = useUIStore((s) => s.setImportDialogOpen);
+  const isMobile = useUIStore((s) => s.isMobile);
   const { theme, setTheme } = useTheme();
   const [showSettings, setShowSettings] = useState(false);
 
@@ -52,6 +54,17 @@ export function Header() {
             </svg>
           )}
         </button>
+        {!isMobile && (
+          <button
+            onClick={() => setImportDialogOpen(true)}
+            className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+            aria-label="Import file"
+            data-testid="header-import"
+            title="Import CSV / TSV / JSON / XLSX"
+          >
+            Import
+          </button>
+        )}
         <button
           onClick={toggleQueryPanel}
           className="px-3 py-1.5 text-sm bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600"

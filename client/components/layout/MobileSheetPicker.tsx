@@ -56,17 +56,31 @@ export function MobileSheetPicker() {
             Done
           </button>
         </div>
-        {/* New sheet button */}
-        <div className="px-4 pb-3 shrink-0">
+        {/* New sheet + Import */}
+        <div className="px-4 pb-3 shrink-0 flex gap-2">
           <button
             onClick={() => setShowCreate(true)}
-            className="w-full h-12 rounded-xl bg-blue-600 dark:bg-blue-500 text-white font-medium text-base flex items-center justify-center gap-2 active:bg-blue-700"
+            className="flex-1 h-12 rounded-xl bg-blue-600 dark:bg-blue-500 text-white font-medium text-base flex items-center justify-center gap-2 active:bg-blue-700"
             data-testid="mobile-create-sheet-btn"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
             </svg>
             New sheet
+          </button>
+          <button
+            onClick={() => {
+              useUIStore.getState().setImportDialogOpen(true);
+              setSidebarOpen(false);
+            }}
+            className="h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-medium text-base flex items-center justify-center gap-2 active:bg-gray-100 dark:active:bg-gray-700"
+            data-testid="mobile-import-btn"
+            aria-label="Import file"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M12 12V4m0 0l-4 4m4-4l4 4" />
+            </svg>
+            Import
           </button>
         </div>
         {/* List */}

@@ -6,10 +6,14 @@ import { ViewContainer } from './components/views/ViewContainer';
 import { QueryPanel } from './components/query/QueryPanel';
 import { ImportDialog } from './components/import/ImportDialog';
 import { ToastContainer } from './components/layout/Toast';
+import { useUIStore } from './store/uiStore';
+
+const ACCEPTED_IMPORT_EXTS = new Set(['csv', 'tsv', 'json', 'xlsx', 'xls']);
 
 export default function App() {
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [showImport, setShowImport] = useState(false);
+  const importDialogOpen = useUIStore((s) => s.importDialogOpen);
+  const setImportDialogOpen = useUIStore((s) => s.setImportDialogOpen);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -21,12 +25,12 @@ export default function App() {
     const file = e.dataTransfer.files[0];
     if (file) {
       const ext = file.name.split('.').pop()?.toLowerCase();
-      if (ext === 'csv' || ext === 'tsv' || ext === 'json') {
+      if (ext && ACCEPTED_IMPORT_EXTS.has(ext)) {
         setImportFile(file);
-        setShowImport(true);
+        setImportDialogOpen(true);
       }
     }
-  }, []);
+  }, [setImportDialogOpen]);
 
   return (
     <ErrorBoundary>
@@ -41,11 +45,11 @@ export default function App() {
             </div>
           </AppShell>
         </div>
-        {showImport && (
+        {importDialogOpen && (
           <ImportDialog
             initialFile={importFile || undefined}
             onClose={() => {
-              setShowImport(false);
+              setImportDialogOpen(false);
               setImportFile(null);
             }}
           />

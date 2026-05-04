@@ -20,12 +20,12 @@ export function sendChat(
 
   (async () => {
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (apiKey) headers['X-Api-Key'] = apiKey;
+
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Api-Key': apiKey,
-        },
+        headers,
         body: JSON.stringify(request),
         signal: controller.signal,
       });

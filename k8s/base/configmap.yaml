@@ -10,3 +10,7 @@ data:
   PORT: "3001"
   STORAGE_DIR: "/var/lib/quak"
   MOCK_LLM: "false"
+  # Default LLM backend used when the user has not supplied an OpenRouter key.
+  # Points at the self-hosted Ollama instance running on the GPU droplet.
+  LLM_DEFAULT_BASE_URL: "http://167.99.185.154:11434/v1"
+  LLM_DEFAULT_MODEL: "llama3.2:3b"

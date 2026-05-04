@@ -47,18 +47,29 @@ export function getOpenAITools() {
   return TOOL_DEFINITIONS.map(toolDefToOpenAI);
 }
 
+export interface StreamChatOptions {
+  baseUrl: string;
+  apiKey?: string;
+  model: string;
+  messages: OpenAIMessage[];
+  extraHeaders?: Record<string, string>;
+}
+
 export async function* streamChat(
-  apiKey: string,
-  model: string,
-  messages: OpenAIMessage[],
+  opts: StreamChatOptions,
 ): AsyncGenerator<StreamChunk> {
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const { baseUrl, apiKey, model, messages, extraHeaders } = opts;
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(extraHeaders ?? {}),
+  };
+  if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+  const url = baseUrl.replace(/\/+$/, '') + '/chat/completions';
+  const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://quak.app',
-    },
+    headers,
     body: JSON.stringify({
       model,
       messages,
@@ -69,7 +80,7 @@ export async function* streamChat(
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`OpenRouter error ${response.status}: ${body}`);
+    throw new Error(`LLM error ${response.status} from ${url}: ${body}`);
   }
 
   const reader = response.body?.getReader();

@@ -3,6 +3,14 @@ import { TOOL_DEFINITIONS, type ChatRequest, type ToolResult } from '../../share
 import { executeTool, isClientActionResult } from '../llm/tools.js';
 import { streamChat } from '../llm/openrouter.js';
 import { buildSystemPrompt } from '../llm/systemPrompt.js';
+import {
+  HAS_DEFAULT_LLM,
+  LLM_DEFAULT_API_KEY,
+  LLM_DEFAULT_BASE_URL,
+  LLM_DEFAULT_MODEL,
+  LLM_OPENROUTER_BASE_URL,
+} from '../config.js';
+import { logger } from '../logger.js';
 
 const router = Router();
 
@@ -120,18 +128,43 @@ async function handleMockChat(req: Request, res: Response) {
 // Real LLM chat with agentic loop
 async function handleRealChat(req: Request, res: Response) {
   const { messages: userMessages, model, context } = req.body as ChatRequest;
-  const apiKey = req.headers['x-api-key'] as string;
+  const userApiKey = (req.headers['x-api-key'] as string) || '';
 
-  if (!apiKey) {
-    res.status(401).json({ error: 'X-Api-Key header required' });
+  // Pick the provider: user-supplied OpenRouter key takes precedence over the
+  // server-configured default (e.g. self-hosted Ollama).
+  const useOpenRouter = userApiKey.length > 0;
+  if (!useOpenRouter && !HAS_DEFAULT_LLM) {
+    res.status(503).json({
+      error: 'No LLM configured. Set an OpenRouter API key, or configure LLM_DEFAULT_BASE_URL/LLM_DEFAULT_MODEL on the server.',
+    });
     return;
   }
+
+  const llmConfig = useOpenRouter
+    ? {
+        provider: 'openrouter' as const,
+        baseUrl: LLM_OPENROUTER_BASE_URL,
+        apiKey: userApiKey,
+        model,
+        extraHeaders: { 'HTTP-Referer': 'https://quak.app' },
+      }
+    : {
+        provider: 'default' as const,
+        baseUrl: LLM_DEFAULT_BASE_URL,
+        apiKey: LLM_DEFAULT_API_KEY || undefined,
+        model: LLM_DEFAULT_MODEL,
+        extraHeaders: undefined,
+      };
+
+  logger.info({ provider: llmConfig.provider, model: llmConfig.model }, 'chat_request');
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     Connection: 'keep-alive',
   });
+
+  sendSSE(res, 'provider', { provider: llmConfig.provider, model: llmConfig.model });
 
   try {
     const systemPrompt = buildSystemPrompt(context);
@@ -152,7 +185,13 @@ async function handleRealChat(req: Request, res: Response) {
       let contentBuffer = '';
       const toolCalls: Map<number, { id: string; name: string; args: string }> = new Map();
 
-      for await (const chunk of streamChat(apiKey, model, openAIMessages)) {
+      for await (const chunk of streamChat({
+        baseUrl: llmConfig.baseUrl,
+        apiKey: llmConfig.apiKey,
+        model: llmConfig.model,
+        messages: openAIMessages,
+        extraHeaders: llmConfig.extraHeaders,
+      })) {
         if (chunk.type === 'content') {
           contentBuffer += chunk.delta;
           sendSSE(res, 'text_delta', { content: chunk.delta });

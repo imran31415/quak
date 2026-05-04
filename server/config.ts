@@ -22,3 +22,10 @@ export const IS_PRODUCTION = NODE_ENV === 'production';
 export const CLIENT_DIST_DIR = process.env.CLIENT_DIST_DIR
   ? path.resolve(process.env.CLIENT_DIST_DIR)
   : path.join(PROJECT_ROOT, 'dist');
+
+export const LLM_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
+
+export const LLM_DEFAULT_BASE_URL = process.env.LLM_DEFAULT_BASE_URL ?? '';
+export const LLM_DEFAULT_MODEL = process.env.LLM_DEFAULT_MODEL ?? '';
+export const LLM_DEFAULT_API_KEY = process.env.LLM_DEFAULT_API_KEY ?? '';
+export const HAS_DEFAULT_LLM = Boolean(LLM_DEFAULT_BASE_URL && LLM_DEFAULT_MODEL);
